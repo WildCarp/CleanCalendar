@@ -10,13 +10,15 @@ import { useUIStore } from '../../stores/useUIStore';
 import { formatDate, WEEKDAY_NAMES, MONTH_NAMES, addDays } from '../../utils/time';
 import type { Task } from '../../types';
 
-/* ======= 横轴=时间  纵轴=日期  平滑平移+连续缩放 ======= */
+/* ======= 横轴=时间  纵轴=日期  铺满容器+平滑缩放 ======= */
 
 const BASE_SLOT_WIDTH = 48;
 const BASE_ROW_HEIGHT = 64;
-const MIN_ZOOM = 0.3;
-const MAX_ZOOM = 3.5;
-const ZOOM_SPEED = 1.08; // 每格滚轮乘法因子
+const HEADER_H = 36;
+const DATE_LABEL_W = 64;
+const MIN_ZOOM = 0.25;
+const MAX_ZOOM = 4.0;
+const ZOOM_SPEED = 1.12;
 
 export const ScheduleGrid: React.FC = () => {
   const tasks = useTaskStore(s => s.tasks);
@@ -25,18 +27,49 @@ export const ScheduleGrid: React.FC = () => {
   const showToast = useUIStore(s => s.showToast);
   const viewCenterDate = useCalendarStore(s => s.viewCenterDate);
 
-  // ── 缩放状态（连续值）──
   const [zoomLevel, setZoomLevel] = useState(1.0);
 
-  // 由 zoom 推导的几何参数
-  const slotWidth = Math.round(BASE_SLOT_WIDTH * zoomLevel);
-  const rowHeight = Math.round(BASE_ROW_HEIGHT * zoomLevel);
-  const effectiveDisplayDays = Math.max(1, Math.min(31, Math.round(7 / zoomLevel)));
+  const dayStartHour = settings.dayStartHour || 0;
+  const dayEndHour = 24;
+  const granularity = settings.timeGranularity || 30;
+  const numSlots = Math.ceil((dayEndHour - dayStartHour) * 60 / granularity);
 
-  // 由 zoom 推导的可见日期列表
+  // ── 测量容器尺寸 ──
+  const gridRef = useRef<HTMLDivElement>(null);
+  const [containerW, setContainerW] = useState(0);
+  const [containerH, setContainerH] = useState(0);
+
+  useEffect(() => {
+    const el = gridRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(([entry]) => {
+      setContainerW(entry.contentRect.width);
+      setContainerH(entry.contentRect.height);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  // ── 连续缩放几何（无取整）──
+  const slotWidth = BASE_SLOT_WIDTH * zoomLevel;
+  const baseRowH = BASE_ROW_HEIGHT * zoomLevel;
+  const totalWidth = numSlots * slotWidth;
+
+  // 按容器高度反算能装多少天（浮点）
+  const idealDays = containerH > 0 ? containerH / baseRowH : 7 / zoomLevel;
+  const effectiveDisplayDaysF = Math.max(1, Math.min(31, idealDays));
+  const effectiveDisplayDays = Math.round(effectiveDisplayDaysF);
+
+  // 行高：铺满容器
+  const rowHeight = containerH > 0
+    ? Math.max(baseRowH, (containerH - HEADER_H) / Math.max(effectiveDisplayDays, 1))
+    : baseRowH;
+
+  // 可见日期列表
   const dates = useMemo(() => {
-    const halfDays = Math.floor(effectiveDisplayDays / 2);
-    const start = addDays(viewCenterDate, -halfDays);
+    const half = effectiveDisplayDays / 2;
+    const offsetDays = Math.floor(half);
+    const start = addDays(viewCenterDate, -offsetDays);
     const result: string[] = [];
     for (let i = 0; i < effectiveDisplayDays; i++) {
       result.push(formatDate(addDays(start, i)));
@@ -52,15 +85,7 @@ export const ScheduleGrid: React.FC = () => {
   // ── 拖拽 ──
   const [activeDrag, setActiveDrag] = useState<{ task: Task; segmentIndex: number; width: number; height: number } | null>(null);
 
-  // 时间槽参数（调度用，不随 zoom 变）
-  const dayStartHour = settings.dayStartHour || 0;
-  const dayEndHour = 24;
-  const granularity = settings.timeGranularity || 30;
-  const numSlots = Math.ceil((dayEndHour - dayStartHour) * 60 / granularity);
-
-  const totalWidth = numSlots * slotWidth;
-
-  // ── 展开的任务段 ──
+  // ── 任务段 ──
   const segmentedTasks = useMemo(() => {
     const result: Array<{
       taskId: string; segmentIndex: number; segmentId: string;
@@ -72,13 +97,12 @@ export const ScheduleGrid: React.FC = () => {
         const seg = task.segments[si];
         const segDate = seg.startTime.split('T')[0];
         if (!dates.includes(segDate)) continue;
-        const startH = parseInt(seg.startTime.split('T')[1].split(':')[0]);
-        const startM = parseInt(seg.startTime.split('T')[1].split(':')[1]);
-        const endH = parseInt(seg.endTime.split('T')[1].split(':')[0]);
-        const endM = parseInt(seg.endTime.split('T')[1].split(':')[1]);
+        const ph = (t: string) => [parseInt(t.split(':')[0]), parseInt(t.split(':')[1])];
+        const [sh, sm] = ph(seg.startTime.split('T')[1]);
+        const [eh, em] = ph(seg.endTime.split('T')[1]);
         result.push({
           taskId: task.id, segmentIndex: si, segmentId: seg.id, date: segDate,
-          startMinutes: startH * 60 + startM, endMinutes: endH * 60 + endM,
+          startMinutes: sh * 60 + sm, endMinutes: eh * 60 + em,
         });
       }
     }
@@ -86,13 +110,12 @@ export const ScheduleGrid: React.FC = () => {
   }, [tasks, dates]);
 
   const getTaskStyle = (startMinutes: number, endMinutes: number): React.CSSProperties => {
-    const startOffset = ((startMinutes - dayStartHour * 60) / granularity) * slotWidth;
-    const durationSlots = (endMinutes - startMinutes) / granularity;
-    const w = durationSlots * slotWidth - 2;
-    return { left: `${startOffset + 1}px`, width: `${Math.max(w, 20)}px` };
+    const left = (startMinutes - dayStartHour * 60) / granularity * slotWidth + 1;
+    const w = (endMinutes - startMinutes) / granularity * slotWidth - 2;
+    return { left: `${left}px`, width: `${Math.max(w, 20)}px` };
   };
 
-  // ===== 拖拽（任务块移动）=====
+  // ===== 拖拽事件 =====
   const handleDragStart = useCallback((event: DragStartEvent) => {
     const data = event.active.data.current;
     if (data && data.type === 'task-block') {
@@ -114,25 +137,24 @@ export const ScheduleGrid: React.FC = () => {
       const targetSlotMinutes = over.data.current?.slotMinutes as number;
       if (!targetDate || targetSlotMinutes === undefined) return;
 
-      const newStart = targetSlotMinutes;
-      const newEnd = Math.min(newStart + ad.task.duration, dayEndHour * 60);
-      if (newEnd - newStart < granularity) return;
+      const ns = targetSlotMinutes;
+      const ne = Math.min(ns + ad.task.duration, dayEndHour * 60);
+      if (ne - ns < granularity) return;
 
-      const sh = Math.floor(newStart / 60), sm = newStart % 60;
-      const eh = Math.floor(newEnd / 60), em = newEnd % 60;
-      const newStartTime = `${targetDate}T${String(sh).padStart(2, '0')}:${String(sm).padStart(2, '0')}`;
-      const newEndTime = `${targetDate}T${String(eh).padStart(2, '0')}:${String(em).padStart(2, '0')}`;
+      const sh = Math.floor(ns / 60), sm = ns % 60;
+      const eh = Math.floor(ne / 60), em = ne % 60;
+      const nst = `${targetDate}T${String(sh).padStart(2, '0')}:${String(sm).padStart(2, '0')}`;
+      const net = `${targetDate}T${String(eh).padStart(2, '0')}:${String(em).padStart(2, '0')}`;
 
-      updateSegment(ad.segmentId, { startTime: newStartTime, endTime: newEndTime, isManuallyPlaced: true });
+      updateSegment(ad.segmentId, { startTime: nst, endTime: net, isManuallyPlaced: true });
       showToast('✅ 任务已移动', 'success');
     },
     [dayEndHour, granularity, updateSegment, showToast],
   );
 
-  // ===== 右键拖拽平滑平移（原生 scrollLeft / scrollTop）=====
+  // ===== 右键拖拽平滑平移 =====
   const panning = useRef(false);
   const panAnchor = useRef({ x: 0, y: 0, sl: 0, st: 0 });
-  const gridRef = useRef<HTMLDivElement>(null);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if (e.button !== 2) return;
@@ -148,7 +170,7 @@ export const ScheduleGrid: React.FC = () => {
       const el = gridRef.current;
       if (!el) return;
       el.scrollLeft = panAnchor.current.sl - (e.clientX - panAnchor.current.x);
-      el.scrollTop  = panAnchor.current.st - (e.clientY - panAnchor.current.y);
+      el.scrollTop = panAnchor.current.st - (e.clientY - panAnchor.current.y);
     };
     const up = () => { panning.current = false; };
     window.addEventListener('mousemove', move);
@@ -156,7 +178,6 @@ export const ScheduleGrid: React.FC = () => {
     return () => { window.removeEventListener('mousemove', move); window.removeEventListener('mouseup', up); };
   }, []);
 
-  // 阻止右键菜单
   useEffect(() => {
     const el = gridRef.current;
     if (!el) return;
@@ -165,14 +186,11 @@ export const ScheduleGrid: React.FC = () => {
     return () => el.removeEventListener('contextmenu', h);
   }, []);
 
-  // ===== 滚轮缩放（连续）=====
+  // ===== 连续滚轮缩放 =====
   const handleWheel = useCallback((e: React.WheelEvent) => {
     e.preventDefault();
     const factor = e.deltaY < 0 ? ZOOM_SPEED : 1 / ZOOM_SPEED;
-    setZoomLevel(z => {
-      const next = z * factor;
-      return Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, next));
-    });
+    setZoomLevel(z => Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, z * factor)));
   }, []);
 
   // ── 渲染 ──
@@ -186,78 +204,83 @@ export const ScheduleGrid: React.FC = () => {
     >
       <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
         {/* 时间表头 */}
-        <div className="sticky top-0 z-10 flex bg-cc-grid-header border-b border-cc-border-subtle h-[36px]"
-          style={{ minWidth: totalWidth + 64 }}>
-          <div className="flex-shrink-0 w-[64px] border-r border-cc-border-subtle" />
+        <div
+          className="sticky top-0 z-10 flex bg-cc-grid-header border-b border-cc-border-subtle"
+          style={{ height: HEADER_H, minWidth: totalWidth + DATE_LABEL_W }}
+        >
+          <div className="flex-shrink-0 border-r border-cc-border-subtle" style={{ width: DATE_LABEL_W }} />
           {Array.from({ length: numSlots }).map((_, i) => {
             const mins = dayStartHour * 60 + i * granularity;
             const h = Math.floor(mins / 60);
             const isHour = mins % 60 === 0;
-            // 根据可视宽度决定是否显示标签
-            const showLabel = isHour && slotWidth > 20;
+            const show = isHour && slotWidth > 22;
             return (
               <div key={i}
-                className={`flex-shrink-0 flex items-center justify-center border-r border-cc-border-subtle text-[10px] font-tabular
-                  ${isHour ? 'text-cc-text-tertiary' : 'text-cc-text-disabled'}`}
-                style={{ width: slotWidth }}>
-                {showLabel ? `${h}:00` : ''}
+                className="flex-shrink-0 flex items-center justify-center border-r border-cc-border-subtle text-[10px] font-tabular"
+                style={{ width: slotWidth, color: isHour ? undefined : 'transparent' }}>
+                {show ? `${h}:00` : ''}
               </div>
             );
           })}
         </div>
 
-        {/* 日期行 */}
-        <div style={{ minWidth: totalWidth + 64 }}>
-          {dates.map((dateStr) => {
-            const d = new Date(dateStr + 'T00:00:00');
-            const isToday = showTodayHighlight && dateStr === todayStr;
-            const isFirstOfMonth = d.getDate() === 1;
+        {/* 日期行——铺满 */}
+        {dates.map((dateStr) => {
+          const d = new Date(dateStr + 'T00:00:00');
+          const isToday = showTodayHighlight && dateStr === todayStr;
+          const isFirstOfMonth = d.getDate() === 1;
 
-            return (
-              <div key={dateStr} className="flex border-b border-cc-border-subtle relative"
-                style={{ height: rowHeight, minWidth: totalWidth + 64 }}>
-                {/* 日期标签 */}
-                <div data-date-col
-                  className={`flex-shrink-0 w-[64px] flex flex-col items-center justify-center border-r border-cc-border-subtle text-label
-                    ${isToday ? 'bg-cc-grid-today text-cc-accent' : 'text-cc-text-tertiary'}`}>
-                  {isFirstOfMonth && <span className="text-[10px]">{MONTH_NAMES[d.getMonth()]}</span>}
-                  <span className={`text-[18px] font-[590] leading-none ${isToday ? 'text-cc-accent' : 'text-cc-text-primary'}`}>
-                    {d.getDate()}
-                  </span>
-                  <span className="text-[10px]">{WEEKDAY_NAMES[d.getDay()]}</span>
-                </div>
-
-                {/* 时间槽 */}
-                {Array.from({ length: numSlots }).map((_, i) => {
-                  const mins = dayStartHour * 60 + i * granularity;
-                  return (
-                    <DroppableCell
-                      key={`${dateStr}-${i}`}
-                      date={dateStr} slotMinutes={mins}
-                      isToday={isToday}
-                      isHour={mins % 60 === 0}
-                      style={{ width: slotWidth }}
-                    />
-                  );
-                })}
-
-                {/* 任务块 */}
-                {segmentedTasks.filter(st => st.date === dateStr).map(st => {
-                  const task = tasks.find(t => t.id === st.taskId);
-                  if (!task) return null;
-                  return (
-                    <TaskBlock
-                      key={`${st.taskId}-${st.segmentIndex}`}
-                      task={task} segmentIndex={st.segmentIndex} segmentId={st.segmentId}
-                      style={{ ...getTaskStyle(st.startMinutes, st.endMinutes), pointerEvents: 'auto' }}
-                      dateStr={st.date} startMinutes={st.startMinutes}
-                    />
-                  );
-                })}
+          return (
+            <div key={dateStr}
+              className="flex border-b border-cc-border-subtle relative"
+              style={{ height: rowHeight, minWidth: totalWidth + DATE_LABEL_W }}
+            >
+              {/* 日期标签 */}
+              <div data-date-col
+                className="flex-shrink-0 flex flex-col items-center justify-center border-r border-cc-border-subtle text-label"
+                style={{
+                  width: DATE_LABEL_W,
+                  color: isToday ? 'var(--accent)' : undefined,
+                  backgroundColor: isToday ? 'var(--grid-today)' : undefined,
+                }}>
+                {isFirstOfMonth && <span className="text-[10px]">{MONTH_NAMES[d.getMonth()]}</span>}
+                <span className="text-[18px] font-[590] leading-none"
+                  style={{ color: isToday ? 'var(--accent)' : undefined }}>
+                  {d.getDate()}
+                </span>
+                <span className="text-[10px]">{WEEKDAY_NAMES[d.getDay()]}</span>
               </div>
-            );
-          })}
-        </div>
+
+              {/* 时间槽 */}
+              {Array.from({ length: numSlots }).map((_, i) => {
+                const mins = dayStartHour * 60 + i * granularity;
+                return (
+                  <DroppableCell
+                    key={`${dateStr}-${i}`}
+                    date={dateStr} slotMinutes={mins}
+                    isToday={isToday}
+                    isHour={mins % 60 === 0}
+                    style={{ width: slotWidth }}
+                  />
+                );
+              })}
+
+              {/* 本行任务块 */}
+              {segmentedTasks.filter(st => st.date === dateStr).map(st => {
+                const task = tasks.find(t => t.id === st.taskId);
+                if (!task) return null;
+                return (
+                  <TaskBlock
+                    key={`${st.taskId}-${st.segmentIndex}`}
+                    task={task} segmentIndex={st.segmentIndex} segmentId={st.segmentId}
+                    style={{ ...getTaskStyle(st.startMinutes, st.endMinutes), pointerEvents: 'auto' }}
+                    dateStr={st.date} startMinutes={st.startMinutes}
+                  />
+                );
+              })}
+            </div>
+          );
+        })}
 
         {/* 拖拽浮层 */}
         <DragOverlay dropAnimation={{ duration: 120 }}>
@@ -265,7 +288,7 @@ export const ScheduleGrid: React.FC = () => {
             <div className="rounded-cc-md border flex items-start gap-1 px-[6px] py-[3px] shadow-drag opacity-90"
               style={{
                 backgroundColor: (() => { const g = useTagGroupStore.getState().tagGroups.find(gg => gg.id === activeDrag.task.tagGroupId); return (g?.color || '#6c7aef') + '18'; })(),
-                color:        (() => { const g = useTagGroupStore.getState().tagGroups.find(gg => gg.id === activeDrag.task.tagGroupId); return g?.color || '#6c7aef'; })(),
+                color: (() => { const g = useTagGroupStore.getState().tagGroups.find(gg => gg.id === activeDrag.task.tagGroupId); return g?.color || '#6c7aef'; })(),
                 width: activeDrag.width, height: activeDrag.height,
               }}>
               <span className="flex-shrink-0 leading-[1.4] text-[12px]">
