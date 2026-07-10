@@ -281,7 +281,7 @@ export const ScheduleGrid: React.FC = () => {
               </div>
 
               {/* 网格区域：overflow-hidden 裁剪溢出到日期栏的任务块 */}
-              <div className="flex-1 relative overflow-hidden" style={{ minWidth: totalWidth }}>
+              <div className="flex-1 relative overflow-hidden flex" style={{ minWidth: totalWidth }}>
                 {Array.from({ length: numSlots }).map((_, i) => (
                   <DroppableCell
                     key={`${dateStr}-${i}`}
