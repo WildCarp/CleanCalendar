@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import { useDraggable } from '@dnd-kit/core';
 import type { Task } from '../../types';
 import { useTaskStore } from '../../stores/useTaskStore';
@@ -29,12 +29,22 @@ export const TaskBlock: React.FC<TaskBlockProps> = ({
   const setDetailPanelOpen = useUIStore(s => s.setDetailPanelOpen);
   const showToast = useUIStore(s => s.showToast);
 
+  const ref = useRef<HTMLDivElement>(null);
+  const [clientSize, setClientSize] = React.useState({ w: 100, h: 24 });
+
   const group = tagGroups.find(g => g.id === task.tagGroupId);
   const tagColor = group?.color || '#6c7aef';
   const emoji = group?.emoji || '📋';
 
   const seg = segmentIndex !== undefined ? task.segments[segmentIndex] : null;
   const isCompleted = seg?.isCompleted ?? false;
+
+  // 记录实际渲染尺寸供拖拽 overlay 使用
+  useEffect(() => {
+    if (ref.current) {
+      setClientSize({ w: ref.current.offsetWidth, h: ref.current.offsetHeight });
+    }
+  }, [style?.width, style?.height]);
 
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -54,7 +64,6 @@ export const TaskBlock: React.FC<TaskBlockProps> = ({
     }
   };
 
-  // Draggable 配置
   const dragId = segmentId || `${task.id}-${segmentIndex}`;
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: dragId,
@@ -64,6 +73,8 @@ export const TaskBlock: React.FC<TaskBlockProps> = ({
       segmentId,
       dateStr,
       startMinutes,
+      segWidth: clientSize.w,
+      segHeight: clientSize.h,
       type: 'task-block',
     },
     disabled: isCompleted,
@@ -75,19 +86,24 @@ export const TaskBlock: React.FC<TaskBlockProps> = ({
   const dragStyle: React.CSSProperties = transform
     ? {
         transform: `translate(${transform.x}px, ${transform.y}px)`,
-        zIndex: 20,
-        opacity: isDragging ? 0.85 : 1,
-        boxShadow: isDragging ? '0 4px 16px rgba(0,0,0,0.3)' : undefined,
+        zIndex: isDragging ? 25 : 20,
+        opacity: isDragging ? 0.3 : 1,
+        boxShadow: isDragging ? 'none' : undefined,
       }
     : {};
 
+  const setRefs = (node: HTMLDivElement | null) => {
+    setNodeRef(node);
+    (ref as React.MutableRefObject<HTMLDivElement | null>).current = node;
+  };
+
   return (
     <div
-      ref={setNodeRef}
-      className={`task-block absolute left-[2px] right-[2px] rounded-cc-md border overflow-hidden flex items-start gap-1 px-[6px] py-[3px] z-[2]
+      ref={setRefs}
+      className={`task-block absolute rounded-cc-md border overflow-hidden flex items-start gap-1 px-[6px] py-[3px] z-[2]
         transition-all duration-120 hover:shadow-[0_0_0_2px_var(--border-accent)] hover:z-[5]
         cursor-grab active:cursor-grabbing select-none
-        ${isDragging ? 'z-[20]' : ''}
+        ${isDragging ? 'z-[25]' : ''}
         ${isCompleted ? 'opacity-50' : ''}`}
       style={{
         backgroundColor: tagColor + bgAlpha,
@@ -111,7 +127,6 @@ export const TaskBlock: React.FC<TaskBlockProps> = ({
           ({seg.index}/{seg.totalSegments})
         </span>
       )}
-      {/* 拖拽手柄指示器 */}
       {!isCompleted && (
         <span className="flex-shrink-0 text-[10px] opacity-50 leading-[1.4] ml-auto">⠿</span>
       )}

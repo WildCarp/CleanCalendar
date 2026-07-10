@@ -9,8 +9,6 @@ export const TopBar: React.FC = () => {
   const toggleSidebar = useUIStore(s => s.toggleSidebar);
   const openSettings = useUIStore(s => s.openSettings);
   const goToToday = useCalendarStore(s => s.goToToday);
-  const goBackward = useCalendarStore(s => s.goBackward);
-  const goForward = useCalendarStore(s => s.goForward);
   const toggleDarkMode = useSettingsStore(s => s.toggleDarkMode);
   const darkMode = useSettingsStore(s => s.settings.darkMode);
   const { scheduleAll } = useSchedule();
@@ -28,14 +26,8 @@ export const TopBar: React.FC = () => {
       </Button>
       <span className="text-h3 text-cc-text-primary">CleanCalendar</span>
       <div className="flex-1" />
-      <Button variant="icon" onClick={() => goBackward()} title="上一个周期">
-        ◂
-      </Button>
       <Button variant="ghost" onClick={goToToday}>
         📅 今天
-      </Button>
-      <Button variant="icon" onClick={() => goForward()} title="下一个周期">
-        ▸
       </Button>
       <div className="w-[1px] h-[18px] bg-cc-border-default mx-1" />
       <Button variant="success" onClick={handleScheduleAll}>

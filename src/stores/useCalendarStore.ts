@@ -2,11 +2,8 @@ import { create } from 'zustand';
 import { formatDate, addDays } from '../utils/time';
 
 interface CalendarStore {
-  // 当前视图中心日期
   viewCenterDate: Date;
-  // 显示天数
   displayDays: number;
-  // 滚动位置
   scrollTop: number;
   scrollLeft: number;
 
@@ -16,8 +13,8 @@ interface CalendarStore {
   goToToday: () => void;
   goForward: (days?: number) => void;
   goBackward: (days?: number) => void;
+  panByDelta: (deltaDays: number) => void;
 
-  // 派生：视图起始和结束日期
   getViewStartDate: () => string;
   getViewEndDate: () => string;
   getVisibleDates: () => string[];
@@ -43,6 +40,10 @@ export const useCalendarStore = create<CalendarStore>((set, get) => ({
   goBackward: (days) => {
     const d = days || get().displayDays;
     set({ viewCenterDate: addDays(get().viewCenterDate, -d) });
+  },
+
+  panByDelta: (deltaDays) => {
+    set({ viewCenterDate: addDays(get().viewCenterDate, -deltaDays) });
   },
 
   getViewStartDate: () => {

@@ -8,6 +8,7 @@ import { Toggle } from '../ui/Toggle';
 import { useTaskStore } from '../../stores/useTaskStore';
 import { useTagGroupStore } from '../../stores/useTagGroupStore';
 import { useUIStore } from '../../stores/useUIStore';
+import { useSchedule } from '../../hooks/useSchedule';
 import { formatDateTime, addDays } from '../../utils/time';
 
 export const CreateTaskForm: React.FC = () => {
@@ -16,6 +17,7 @@ export const CreateTaskForm: React.FC = () => {
   const createTask = useTaskStore(s => s.create);
   const tagGroups = useTagGroupStore(s => s.tagGroups);
   const showToast = useUIStore(s => s.showToast);
+  const { rescheduleOne } = useSchedule();
 
   const [name, setName] = useState('');
   const [tagGroupId, setTagGroupId] = useState('');
@@ -64,7 +66,11 @@ export const CreateTaskForm: React.FC = () => {
     setCanAffectOthers(true);
 
     if (andSchedule) {
-      showToast('🔄 安排功能开发中...', 'info');
+      try {
+        await rescheduleOne(task.id);
+      } catch {
+        showToast('⚠️ 任务已创建但排程失败，可手动安排', 'warning');
+      }
     }
   };
 

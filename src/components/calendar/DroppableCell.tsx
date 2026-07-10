@@ -6,6 +6,7 @@ interface DroppableCellProps {
   slotMinutes: number;
   isToday: boolean;
   isHour: boolean;
+  style?: React.CSSProperties;
 }
 
 export const DroppableCell: React.FC<DroppableCellProps> = ({
@@ -13,6 +14,7 @@ export const DroppableCell: React.FC<DroppableCellProps> = ({
   slotMinutes,
   isToday,
   isHour,
+  style,
 }) => {
   const { setNodeRef, isOver } = useDroppable({
     id: `cell-${date}-${slotMinutes}`,
@@ -26,13 +28,14 @@ export const DroppableCell: React.FC<DroppableCellProps> = ({
   return (
     <div
       ref={setNodeRef}
-      className={`border-r relative transition-colors duration-100
-        ${isHour ? 'border-b border-cc-border-default' : 'border-b border-cc-border-subtle'}
+      className={`flex-shrink-0 relative transition-colors duration-100 border-r
+        ${isHour ? 'border-cc-border-default' : 'border-cc-border-subtle'}
         ${isToday ? 'bg-cc-grid-today' : ''}
-        ${isOver ? 'bg-cc-accent-subtle border-accent' : ''}`}
+        ${isOver ? '!bg-cc-accent-subtle' : ''}`}
       style={{
-        borderColor: isOver ? 'var(--border-accent)' : undefined,
+        borderRightColor: isOver ? 'var(--border-accent)' : undefined,
         boxShadow: isOver ? 'inset 0 0 0 1px var(--border-accent)' : undefined,
+        ...style,
       }}
       data-date={date}
       data-slot-minutes={slotMinutes}
