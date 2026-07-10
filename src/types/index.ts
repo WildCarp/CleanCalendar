@@ -56,6 +56,7 @@ export interface Settings {
   dayStartHour: number;
   axisSwapped: boolean;
   darkMode: boolean;
+  showGridLines: boolean;
   taskOpacity: number;
   timeGranularity: number;
   displayDays: number;
@@ -74,6 +75,7 @@ export const DEFAULT_SETTINGS: Settings = {
   dayStartHour: 0,
   axisSwapped: false,
   darkMode: false,
+  showGridLines: true,
   taskOpacity: 0.8,
   timeGranularity: 15,
   displayDays: 7,

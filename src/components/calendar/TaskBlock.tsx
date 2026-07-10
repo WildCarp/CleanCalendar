@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React from 'react';
 import { useDraggable } from '@dnd-kit/core';
 import type { Task } from '../../types';
 import { useTaskStore } from '../../stores/useTaskStore';
@@ -29,22 +29,12 @@ export const TaskBlock: React.FC<TaskBlockProps> = ({
   const setDetailPanelOpen = useUIStore(s => s.setDetailPanelOpen);
   const showToast = useUIStore(s => s.showToast);
 
-  const ref = useRef<HTMLDivElement>(null);
-  const [clientSize, setClientSize] = React.useState({ w: 100, h: 24 });
-
   const group = tagGroups.find(g => g.id === task.tagGroupId);
   const tagColor = group?.color || '#6c7aef';
   const emoji = group?.emoji || '📋';
 
   const seg = segmentIndex !== undefined ? task.segments[segmentIndex] : null;
   const isCompleted = seg?.isCompleted ?? false;
-
-  // 记录实际渲染尺寸供拖拽 overlay 使用
-  useEffect(() => {
-    if (ref.current) {
-      setClientSize({ w: ref.current.offsetWidth, h: ref.current.offsetHeight });
-    }
-  }, [style?.width, style?.height]);
 
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -67,21 +57,9 @@ export const TaskBlock: React.FC<TaskBlockProps> = ({
   const dragId = segmentId || `${task.id}-${segmentIndex}`;
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: dragId,
-    data: {
-      task,
-      segmentIndex,
-      segmentId,
-      dateStr,
-      startMinutes,
-      segWidth: clientSize.w,
-      segHeight: clientSize.h,
-      type: 'task-block',
-    },
+    data: { task, segmentIndex, segmentId, dateStr, startMinutes, type: 'task-block' },
     disabled: isCompleted,
   });
-
-  const bgAlpha = '18';
-  const borderAlpha = '1A';
 
   const dragStyle: React.CSSProperties = transform
     ? {
@@ -92,23 +70,18 @@ export const TaskBlock: React.FC<TaskBlockProps> = ({
       }
     : {};
 
-  const setRefs = (node: HTMLDivElement | null) => {
-    setNodeRef(node);
-    (ref as React.MutableRefObject<HTMLDivElement | null>).current = node;
-  };
-
   return (
     <div
-      ref={setRefs}
+      ref={setNodeRef}
       className={`task-block absolute rounded-cc-md border overflow-hidden flex items-start gap-1 px-[6px] py-[3px] z-[2]
         transition-all duration-120 hover:shadow-[0_0_0_2px_var(--border-accent)] hover:z-[5]
         cursor-grab active:cursor-grabbing select-none
         ${isDragging ? 'z-[25]' : ''}
         ${isCompleted ? 'opacity-50' : ''}`}
       style={{
-        backgroundColor: tagColor + bgAlpha,
+        backgroundColor: tagColor + '18',
         color: tagColor,
-        borderColor: tagColor + borderAlpha,
+        borderColor: tagColor + '1A',
         minHeight: '20px',
         ...style,
         ...dragStyle,

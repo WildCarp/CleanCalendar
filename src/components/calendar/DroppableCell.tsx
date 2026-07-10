@@ -4,37 +4,30 @@ import { useDroppable } from '@dnd-kit/core';
 interface DroppableCellProps {
   date: string;
   slotMinutes: number;
-  isToday: boolean;
-  isHour: boolean;
   style?: React.CSSProperties;
 }
 
+/**
+ * 纯逻辑释放目标——无任何视觉样式。
+ * 网格线由父级 CSS background 绘制。
+ */
 export const DroppableCell: React.FC<DroppableCellProps> = ({
   date,
   slotMinutes,
-  isToday,
-  isHour,
   style,
 }) => {
   const { setNodeRef, isOver } = useDroppable({
     id: `cell-${date}-${slotMinutes}`,
-    data: {
-      date,
-      slotMinutes,
-      type: 'grid-cell',
-    },
+    data: { date, slotMinutes, type: 'grid-cell' },
   });
 
   return (
     <div
       ref={setNodeRef}
-      className={`flex-shrink-0 relative transition-colors duration-100 border-r
-        ${isHour ? 'border-cc-border-default' : 'border-cc-border-subtle'}
-        ${isToday ? 'bg-cc-grid-today' : ''}
-        ${isOver ? '!bg-cc-accent-subtle' : ''}`}
+      className="flex-shrink-0 relative"
       style={{
-        borderRightColor: isOver ? 'var(--border-accent)' : undefined,
-        boxShadow: isOver ? 'inset 0 0 0 1px var(--border-accent)' : undefined,
+        outline: isOver ? '1px solid var(--border-accent)' : undefined,
+        backgroundColor: isOver ? 'var(--accent-subtle)' : undefined,
         ...style,
       }}
       data-date={date}

@@ -154,6 +154,13 @@ export const SettingsModal: React.FC = () => {
                 onChange={v => updateSettings({ darkMode: v })}
               />
             </div>
+            <div className="flex items-center justify-between">
+              <span className="text-caption text-cc-text-tertiary">显示网格线</span>
+              <Toggle
+                checked={settings.showGridLines}
+                onChange={v => updateSettings({ showGridLines: v })}
+              />
+            </div>
           </div>
         </div>
 

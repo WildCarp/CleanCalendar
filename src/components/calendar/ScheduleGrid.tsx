@@ -10,7 +10,7 @@ import { useUIStore } from '../../stores/useUIStore';
 import { formatDate, WEEKDAY_NAMES, MONTH_NAMES, addDays } from '../../utils/time';
 import type { Task } from '../../types';
 
-/* ======= 横轴=时间  纵轴=日期  铺满容器+平滑缩放 ======= */
+/* ======= 横轴=时间  纵轴=日期  网格线=CSS背景  拖拽=原尺寸 ======= */
 
 const BASE_SLOT_WIDTH = 48;
 const BASE_ROW_HEIGHT = 64;
@@ -34,42 +34,35 @@ export const ScheduleGrid: React.FC = () => {
   const granularity = settings.timeGranularity || 30;
   const numSlots = Math.ceil((dayEndHour - dayStartHour) * 60 / granularity);
 
-  // ── 测量容器尺寸 ──
+  // ── 容器尺寸 ──
   const gridRef = useRef<HTMLDivElement>(null);
-  const [containerW, setContainerW] = useState(0);
   const [containerH, setContainerH] = useState(0);
 
   useEffect(() => {
     const el = gridRef.current;
     if (!el) return;
     const ro = new ResizeObserver(([entry]) => {
-      setContainerW(entry.contentRect.width);
       setContainerH(entry.contentRect.height);
     });
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
 
-  // ── 连续缩放几何（无取整）──
+  // ── 几何 ──
   const slotWidth = BASE_SLOT_WIDTH * zoomLevel;
   const baseRowH = BASE_ROW_HEIGHT * zoomLevel;
   const totalWidth = numSlots * slotWidth;
 
-  // 按容器高度反算能装多少天（浮点）
   const idealDays = containerH > 0 ? containerH / baseRowH : 7 / zoomLevel;
-  const effectiveDisplayDaysF = Math.max(1, Math.min(31, idealDays));
-  const effectiveDisplayDays = Math.round(effectiveDisplayDaysF);
+  const effectiveDisplayDays = Math.round(Math.max(1, Math.min(31, idealDays)));
 
-  // 行高：铺满容器
   const rowHeight = containerH > 0
     ? Math.max(baseRowH, (containerH - HEADER_H) / Math.max(effectiveDisplayDays, 1))
     : baseRowH;
 
-  // 可见日期列表
   const dates = useMemo(() => {
     const half = effectiveDisplayDays / 2;
-    const offsetDays = Math.floor(half);
-    const start = addDays(viewCenterDate, -offsetDays);
+    const start = addDays(viewCenterDate, -Math.floor(half));
     const result: string[] = [];
     for (let i = 0; i < effectiveDisplayDays; i++) {
       result.push(formatDate(addDays(start, i)));
@@ -82,8 +75,17 @@ export const ScheduleGrid: React.FC = () => {
   const daysFromToday = Math.abs((viewCenterDate.getTime() - today.getTime()) / 86_400_000);
   const showTodayHighlight = daysFromToday < effectiveDisplayDays / 2 + 2;
 
-  // ── 拖拽 ──
-  const [activeDrag, setActiveDrag] = useState<{ task: Task; segmentIndex: number; width: number; height: number } | null>(null);
+  // ── 网格线 CSS ──
+  const showGrid = settings.showGridLines;
+  const gridBg = showGrid
+    ? `repeating-linear-gradient(to right, var(--border-subtle, #e0e0e0) 0, var(--border-subtle, #e0e0e0) 1px, transparent 1px, transparent ${slotWidth}px)`
+    : 'none';
+
+  // ── 拖拽状态（含精确尺寸）──
+  const [activeDrag, setActiveDrag] = useState<{
+    task: Task; emoji: string; color: string;
+    w: number; h: number;
+  } | null>(null);
 
   // ── 任务段 ──
   const segmentedTasks = useMemo(() => {
@@ -115,14 +117,33 @@ export const ScheduleGrid: React.FC = () => {
     return { left: `${left}px`, width: `${Math.max(w, 20)}px` };
   };
 
-  // ===== 拖拽事件 =====
+  // ===== 拖拽——精确尺寸计算 =====
   const handleDragStart = useCallback((event: DragStartEvent) => {
     const data = event.active.data.current;
-    if (data && data.type === 'task-block') {
-      const d = data as { task: Task; segmentIndex: number; segWidth: number; segHeight: number };
-      setActiveDrag({ task: d.task, segmentIndex: d.segmentIndex, width: d.segWidth || 100, height: d.segHeight || 24 });
+    if (!data || data.type !== 'task-block') return;
+    const d = data as { task: Task; segmentIndex: number };
+
+    // 同步计算任务块的精确像素尺寸（不依赖异步 useEffect）
+    const seg = d.task.segments[d.segmentIndex];
+    let blockW = 100, blockH = 24;
+    if (seg) {
+      const ph = (t: string) => [parseInt(t.split(':')[0]), parseInt(t.split(':')[1])];
+      const [sh, sm] = ph(seg.startTime.split('T')[1]);
+      const [eh, em] = ph(seg.endTime.split('T')[1]);
+      const dur = (eh * 60 + em) - (sh * 60 + sm);
+      blockW = Math.max((dur / granularity) * slotWidth - 2, 24);
+      blockH = rowHeight - 4;
     }
-  }, []);
+
+    const groups = useTagGroupStore.getState().tagGroups;
+    const g = groups.find(gg => gg.id === d.task.tagGroupId);
+    setActiveDrag({
+      task: d.task,
+      emoji: g?.emoji || '📋',
+      color: g?.color || '#6c7aef',
+      w: blockW, h: blockH,
+    });
+  }, [granularity, slotWidth, rowHeight]);
 
   const handleDragEnd = useCallback(
     (event: DragEndEvent) => {
@@ -143,10 +164,11 @@ export const ScheduleGrid: React.FC = () => {
 
       const sh = Math.floor(ns / 60), sm = ns % 60;
       const eh = Math.floor(ne / 60), em = ne % 60;
-      const nst = `${targetDate}T${String(sh).padStart(2, '0')}:${String(sm).padStart(2, '0')}`;
-      const net = `${targetDate}T${String(eh).padStart(2, '0')}:${String(em).padStart(2, '0')}`;
-
-      updateSegment(ad.segmentId, { startTime: nst, endTime: net, isManuallyPlaced: true });
+      updateSegment(ad.segmentId, {
+        startTime: `${targetDate}T${String(sh).padStart(2, '0')}:${String(sm).padStart(2, '0')}`,
+        endTime:   `${targetDate}T${String(eh).padStart(2, '0')}:${String(em).padStart(2, '0')}`,
+        isManuallyPlaced: true,
+      });
       showToast('✅ 任务已移动', 'success');
     },
     [dayEndHour, granularity, updateSegment, showToast],
@@ -170,7 +192,7 @@ export const ScheduleGrid: React.FC = () => {
       const el = gridRef.current;
       if (!el) return;
       el.scrollLeft = panAnchor.current.sl - (e.clientX - panAnchor.current.x);
-      el.scrollTop = panAnchor.current.st - (e.clientY - panAnchor.current.y);
+      el.scrollTop  = panAnchor.current.st - (e.clientY - panAnchor.current.y);
     };
     const up = () => { panning.current = false; };
     window.addEventListener('mousemove', move);
@@ -204,27 +226,24 @@ export const ScheduleGrid: React.FC = () => {
     >
       <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
         {/* 时间表头 */}
-        <div
-          className="sticky top-0 z-10 flex bg-cc-grid-header border-b border-cc-border-subtle"
-          style={{ height: HEADER_H, minWidth: totalWidth + DATE_LABEL_W }}
-        >
+        <div className="sticky top-0 z-10 flex bg-cc-grid-header border-b border-cc-border-subtle"
+          style={{ height: HEADER_H, minWidth: totalWidth + DATE_LABEL_W }}>
           <div className="flex-shrink-0 border-r border-cc-border-subtle" style={{ width: DATE_LABEL_W }} />
           {Array.from({ length: numSlots }).map((_, i) => {
             const mins = dayStartHour * 60 + i * granularity;
             const h = Math.floor(mins / 60);
             const isHour = mins % 60 === 0;
-            const show = isHour && slotWidth > 22;
             return (
               <div key={i}
                 className="flex-shrink-0 flex items-center justify-center border-r border-cc-border-subtle text-[10px] font-tabular"
                 style={{ width: slotWidth, color: isHour ? undefined : 'transparent' }}>
-                {show ? `${h}:00` : ''}
+                {isHour && slotWidth > 22 ? `${h}:00` : ''}
               </div>
             );
           })}
         </div>
 
-        {/* 日期行——铺满 */}
+        {/* 日期行 */}
         {dates.map((dateStr) => {
           const d = new Date(dateStr + 'T00:00:00');
           const isToday = showTodayHighlight && dateStr === todayStr;
@@ -233,8 +252,13 @@ export const ScheduleGrid: React.FC = () => {
           return (
             <div key={dateStr}
               className="flex border-b border-cc-border-subtle relative"
-              style={{ height: rowHeight, minWidth: totalWidth + DATE_LABEL_W }}
-            >
+              style={{
+                height: rowHeight,
+                minWidth: totalWidth + DATE_LABEL_W,
+                backgroundImage: gridBg,
+                backgroundPosition: `${DATE_LABEL_W}px 0`,
+                backgroundRepeat: 'repeat-x',
+              }}>
               {/* 日期标签 */}
               <div data-date-col
                 className="flex-shrink-0 flex flex-col items-center justify-center border-r border-cc-border-subtle text-label"
@@ -251,19 +275,15 @@ export const ScheduleGrid: React.FC = () => {
                 <span className="text-[10px]">{WEEKDAY_NAMES[d.getDay()]}</span>
               </div>
 
-              {/* 时间槽 */}
-              {Array.from({ length: numSlots }).map((_, i) => {
-                const mins = dayStartHour * 60 + i * granularity;
-                return (
-                  <DroppableCell
-                    key={`${dateStr}-${i}`}
-                    date={dateStr} slotMinutes={mins}
-                    isToday={isToday}
-                    isHour={mins % 60 === 0}
-                    style={{ width: slotWidth }}
-                  />
-                );
-              })}
+              {/* 时间槽——纯 drop target，无视觉 */}
+              {Array.from({ length: numSlots }).map((_, i) => (
+                <DroppableCell
+                  key={`${dateStr}-${i}`}
+                  date={dateStr}
+                  slotMinutes={dayStartHour * 60 + i * granularity}
+                  style={{ width: slotWidth }}
+                />
+              ))}
 
               {/* 本行任务块 */}
               {segmentedTasks.filter(st => st.date === dateStr).map(st => {
@@ -282,18 +302,18 @@ export const ScheduleGrid: React.FC = () => {
           );
         })}
 
-        {/* 拖拽浮层 */}
+        {/* 拖拽浮层——与任务块完全一致的外观 */}
         <DragOverlay dropAnimation={{ duration: 120 }}>
           {activeDrag ? (
-            <div className="rounded-cc-md border flex items-start gap-1 px-[6px] py-[3px] shadow-drag opacity-90"
+            <div className="rounded-cc-md border flex items-start gap-1 px-[6px] py-[3px] shadow-drag opacity-92"
               style={{
-                backgroundColor: (() => { const g = useTagGroupStore.getState().tagGroups.find(gg => gg.id === activeDrag.task.tagGroupId); return (g?.color || '#6c7aef') + '18'; })(),
-                color: (() => { const g = useTagGroupStore.getState().tagGroups.find(gg => gg.id === activeDrag.task.tagGroupId); return g?.color || '#6c7aef'; })(),
-                width: activeDrag.width, height: activeDrag.height,
+                backgroundColor: activeDrag.color + '18',
+                color: activeDrag.color,
+                borderColor: activeDrag.color + '1A',
+                width: activeDrag.w,
+                height: activeDrag.h,
               }}>
-              <span className="flex-shrink-0 leading-[1.4] text-[12px]">
-                {(() => { const g = useTagGroupStore.getState().tagGroups.find(gg => gg.id === activeDrag.task.tagGroupId); return g?.emoji || '📋'; })()}
-              </span>
+              <span className="flex-shrink-0 leading-[1.4] text-[12px]">{activeDrag.emoji}</span>
               <span className="flex-1 whitespace-nowrap overflow-hidden text-ellipsis leading-[1.4] text-[12px]">
                 {activeDrag.task.name}
               </span>
