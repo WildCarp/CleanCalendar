@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-theme="light">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -440,6 +440,8 @@
     background: transparent;
     cursor: pointer; transition: all 120ms ease;
     flex-shrink: 0; padding: 0;
+    box-sizing: border-box; line-height: 0; font-size: 0;
+    display: inline-flex; align-items: center; justify-content: center;
   }
   .dot-rating .dot-btn:hover { border-color: var(--accent); }
   .dot-rating .dot-btn.filled { border-color: transparent; }
@@ -450,15 +452,15 @@
     width: 30px; height: 18px; background: var(--border-default);
     border-radius: var(--radius-full); position: relative;
     cursor: pointer; transition: background 150ms;
-    border: 1px solid transparent;
+    border: 1px solid transparent; box-sizing: border-box;
   }
   .switch.on { background: var(--switch-on); }
   .switch::after {
-    content: ''; position: absolute; top: 2px; left: 2px;
+    content: ''; position: absolute; top: 1px; left: 1px;
     width: 14px; height: 14px; border-radius: 50%;
     background: #ffffff; transition: transform 150ms;
   }
-  .switch.on::after { transform: translateX(12px); }
+  .switch.on::after { transform: translateX(13px); }
 
   /* Overlay for click-outside */
   .popup-overlay {
@@ -639,7 +641,7 @@
 <script>
 // ── Theme ──
 const html = document.documentElement;
-let isDark = true;
+let isDark = false;
 
 function toggleTheme() {
   isDark = !isDark;
