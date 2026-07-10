@@ -10,15 +10,22 @@ import { useUIStore } from '../../stores/useUIStore';
 import { formatDate, WEEKDAY_NAMES, MONTH_NAMES, addDays } from '../../utils/time';
 import type { Task } from '../../types';
 
-/* ======= 横轴=时间  纵轴=日期  网格线=CSS背景  拖拽=原尺寸 ======= */
+/* ======= 横轴=时间  纵轴=日期 ======= */
 
 const BASE_SLOT_WIDTH = 48;
 const BASE_ROW_HEIGHT = 64;
 const HEADER_H = 36;
 const DATE_LABEL_W = 64;
-const MIN_ZOOM = 0.25;
+const MIN_ZOOM = 0.5;
 const MAX_ZOOM = 4.0;
 const ZOOM_SPEED = 1.12;
+
+// 低缩放时合并槽位以减少 DOM（粒度自适应）
+function effectiveGranularity(baseGran: number, zoom: number) {
+  if (zoom < 0.65) return baseGran * 4;
+  if (zoom < 0.85) return baseGran * 2;
+  return baseGran;
+}
 
 export const ScheduleGrid: React.FC = () => {
   const tasks = useTaskStore(s => s.tasks);
@@ -31,7 +38,8 @@ export const ScheduleGrid: React.FC = () => {
 
   const dayStartHour = settings.dayStartHour || 0;
   const dayEndHour = 24;
-  const granularity = settings.timeGranularity || 30;
+  const baseGran = settings.timeGranularity || 30;
+  const granularity = effectiveGranularity(baseGran, zoomLevel);
   const numSlots = Math.ceil((dayEndHour - dayStartHour) * 60 / granularity);
 
   // ── 容器尺寸 ──
@@ -81,7 +89,7 @@ export const ScheduleGrid: React.FC = () => {
     ? `repeating-linear-gradient(to right, var(--border-subtle, #e0e0e0) 0, var(--border-subtle, #e0e0e0) 1px, transparent 1px, transparent ${slotWidth}px)`
     : 'none';
 
-  // ── 拖拽状态（含精确尺寸）──
+  // ── 拖拽状态 ──
   const [activeDrag, setActiveDrag] = useState<{
     task: Task; emoji: string; color: string;
     w: number; h: number;
@@ -111,36 +119,36 @@ export const ScheduleGrid: React.FC = () => {
     return result;
   }, [tasks, dates]);
 
+  // 任务块位置：left/width + height
   const getTaskStyle = (startMinutes: number, endMinutes: number): React.CSSProperties => {
     const left = (startMinutes - dayStartHour * 60) / granularity * slotWidth + 1;
     const w = (endMinutes - startMinutes) / granularity * slotWidth - 2;
-    return { left: `${left}px`, width: `${Math.max(w, 20)}px` };
+    return {
+      left: `${left}px`,
+      width: `${Math.max(w, 20)}px`,
+      top: '2px',
+      height: `${Math.max(rowHeight - 4, 16)}px`,
+    };
   };
 
-  // ===== 拖拽——精确尺寸计算 =====
+  // ===== 拖拽——同步计算 =====
   const handleDragStart = useCallback((event: DragStartEvent) => {
     const data = event.active.data.current;
     if (!data || data.type !== 'task-block') return;
     const d = data as { task: Task; segmentIndex: number };
-
-    // 同步计算任务块的精确像素尺寸（不依赖异步 useEffect）
     const seg = d.task.segments[d.segmentIndex];
-    let blockW = 100, blockH = 24;
+    let blockW = 100, blockH = Math.max(rowHeight - 4, 16);
     if (seg) {
       const ph = (t: string) => [parseInt(t.split(':')[0]), parseInt(t.split(':')[1])];
       const [sh, sm] = ph(seg.startTime.split('T')[1]);
       const [eh, em] = ph(seg.endTime.split('T')[1]);
       const dur = (eh * 60 + em) - (sh * 60 + sm);
       blockW = Math.max((dur / granularity) * slotWidth - 2, 24);
-      blockH = rowHeight - 4;
     }
-
     const groups = useTagGroupStore.getState().tagGroups;
     const g = groups.find(gg => gg.id === d.task.tagGroupId);
     setActiveDrag({
-      task: d.task,
-      emoji: g?.emoji || '📋',
-      color: g?.color || '#6c7aef',
+      task: d.task, emoji: g?.emoji || '📋', color: g?.color || '#6c7aef',
       w: blockW, h: blockH,
     });
   }, [granularity, slotWidth, rowHeight]);
@@ -166,7 +174,7 @@ export const ScheduleGrid: React.FC = () => {
       const eh = Math.floor(ne / 60), em = ne % 60;
       updateSegment(ad.segmentId, {
         startTime: `${targetDate}T${String(sh).padStart(2, '0')}:${String(sm).padStart(2, '0')}`,
-        endTime:   `${targetDate}T${String(eh).padStart(2, '0')}:${String(em).padStart(2, '0')}`,
+        endTime: `${targetDate}T${String(eh).padStart(2, '0')}:${String(em).padStart(2, '0')}`,
         isManuallyPlaced: true,
       });
       showToast('✅ 任务已移动', 'success');
@@ -192,7 +200,7 @@ export const ScheduleGrid: React.FC = () => {
       const el = gridRef.current;
       if (!el) return;
       el.scrollLeft = panAnchor.current.sl - (e.clientX - panAnchor.current.x);
-      el.scrollTop  = panAnchor.current.st - (e.clientY - panAnchor.current.y);
+      el.scrollTop = panAnchor.current.st - (e.clientY - panAnchor.current.y);
     };
     const up = () => { panning.current = false; };
     window.addEventListener('mousemove', move);
@@ -222,7 +230,7 @@ export const ScheduleGrid: React.FC = () => {
       className="flex-1 overflow-auto relative bg-cc-canvas select-none"
       onMouseDown={handleMouseDown}
       onWheel={handleWheel}
-      style={{ cursor: panning.current ? 'grabbing' : undefined }}
+      style={{ cursor: panning.current ? 'grabbing' : undefined, willChange: zoomLevel < 0.7 ? 'transform' : 'auto' }}
     >
       <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
         {/* 时间表头 */}
@@ -275,7 +283,7 @@ export const ScheduleGrid: React.FC = () => {
                 <span className="text-[10px]">{WEEKDAY_NAMES[d.getDay()]}</span>
               </div>
 
-              {/* 时间槽——纯 drop target，无视觉 */}
+              {/* 时间槽 */}
               {Array.from({ length: numSlots }).map((_, i) => (
                 <DroppableCell
                   key={`${dateStr}-${i}`}
@@ -302,7 +310,7 @@ export const ScheduleGrid: React.FC = () => {
           );
         })}
 
-        {/* 拖拽浮层——与任务块完全一致的外观 */}
+        {/* 拖拽浮层 */}
         <DragOverlay dropAnimation={{ duration: 120 }}>
           {activeDrag ? (
             <div className="rounded-cc-md border flex items-start gap-1 px-[6px] py-[3px] shadow-drag opacity-92"
@@ -313,8 +321,8 @@ export const ScheduleGrid: React.FC = () => {
                 width: activeDrag.w,
                 height: activeDrag.h,
               }}>
-              <span className="flex-shrink-0 leading-[1.4] text-[12px]">{activeDrag.emoji}</span>
-              <span className="flex-1 whitespace-nowrap overflow-hidden text-ellipsis leading-[1.4] text-[12px]">
+              <span className="flex-shrink-0 leading-[1.3] text-[12px]">{activeDrag.emoji}</span>
+              <span className="flex-1 whitespace-nowrap overflow-hidden text-ellipsis leading-[1.3] text-[12px]">
                 {activeDrag.task.name}
               </span>
             </div>
