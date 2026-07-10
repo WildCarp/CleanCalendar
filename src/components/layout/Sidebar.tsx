@@ -121,11 +121,11 @@ export const Sidebar: React.FC = () => {
         {tagGroups.map(group => (
           <div key={group.id}>
             <div
-              className={`flex items-center gap-1 px-[6px] py-[5px] rounded-cc-md cursor-pointer transition-colors duration-100 group
+              className={`flex items-center gap-1 px-[10px] py-[8px] rounded-cc-md cursor-pointer transition-colors duration-100 group
                 ${selectedTagGroupId === group.id ? 'bg-cc-accent-subtle text-cc-text-primary' : 'text-cc-text-secondary hover:bg-cc-surface-hover'}`}
             >
               <span
-                className="text-[10px] text-cc-text-disabled w-[16px] text-center cursor-pointer"
+                className="text-[12px] text-cc-text-disabled w-[22px] h-[22px] flex items-center justify-center cursor-pointer hover:bg-cc-surface-hover rounded-cc-sm flex-shrink-0 select-none"
                 onClick={(e) => { e.stopPropagation(); toggleExpand(group.id); }}
               >
                 {expandedGroups.has(group.id) ? '▾' : '▸'}
@@ -164,7 +164,7 @@ export const Sidebar: React.FC = () => {
             {expandedGroups.has(group.id) && tasks.filter(t => t.tagGroupId === group.id && t.status !== 'completed').map(task => (
               <div
                 key={task.id}
-                className={`pl-9 pr-[10px] py-1 text-body text-cc-text-tertiary cursor-pointer rounded-cc-sm whitespace-nowrap overflow-hidden text-ellipsis hover:bg-cc-surface-hover hover:text-cc-text-secondary
+                className={`pl-9 pr-[10px] py-[6px] text-body text-cc-text-tertiary cursor-pointer rounded-cc-sm whitespace-nowrap overflow-hidden text-ellipsis hover:bg-cc-surface-hover hover:text-cc-text-secondary
                   ${selectedTaskId === task.id ? 'text-cc-text-primary bg-cc-accent-subtle' : ''}`}
                 onClick={() => selectTask(task.id === selectedTaskId ? null : task.id)}
               >
@@ -188,7 +188,7 @@ export const Sidebar: React.FC = () => {
         {unscheduledTasks.map(task => (
           <div
             key={task.id}
-            className={`pl-3 pr-[10px] py-1 text-body text-cc-text-tertiary cursor-pointer rounded-cc-sm whitespace-nowrap overflow-hidden text-ellipsis hover:bg-cc-surface-hover hover:text-cc-text-secondary
+            className={`pl-3 pr-[10px] py-[6px] text-body text-cc-text-tertiary cursor-pointer rounded-cc-sm whitespace-nowrap overflow-hidden text-ellipsis hover:bg-cc-surface-hover hover:text-cc-text-secondary
               ${selectedTaskId === task.id ? 'text-cc-text-primary bg-cc-accent-subtle' : ''}`}
             onClick={() => selectTask(task.id === selectedTaskId ? null : task.id)}
           >
@@ -196,7 +196,7 @@ export const Sidebar: React.FC = () => {
           </div>
         ))}
         {unscheduledTasks.length === 0 && (
-          <div className="pl-3 py-1 text-caption text-cc-text-disabled">暂无未安排任务</div>
+          <div className="pl-3 py-[6px] text-caption text-cc-text-disabled">暂无未安排任务</div>
         )}
       </div>
 
@@ -210,14 +210,14 @@ export const Sidebar: React.FC = () => {
         {completedTasks.map(task => (
           <div
             key={task.id}
-            className="pl-3 pr-[10px] py-1 text-body text-cc-text-disabled cursor-pointer rounded-cc-sm whitespace-nowrap overflow-hidden text-ellipsis line-through opacity-50 hover:bg-cc-surface-hover"
+            className="pl-3 pr-[10px] py-[6px] text-body text-cc-text-disabled cursor-pointer rounded-cc-sm whitespace-nowrap overflow-hidden text-ellipsis line-through opacity-50 hover:bg-cc-surface-hover"
             onClick={() => selectTask(task.id === selectedTaskId ? null : task.id)}
           >
             ✅ {task.name}
           </div>
         ))}
         {completedTasks.length === 0 && (
-          <div className="pl-3 py-1 text-caption text-cc-text-disabled">暂无已完成任务</div>
+          <div className="pl-3 py-[6px] text-caption text-cc-text-disabled">暂无已完成任务</div>
         )}
       </div>
 

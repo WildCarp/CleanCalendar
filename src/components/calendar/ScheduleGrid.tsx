@@ -236,7 +236,7 @@ export const ScheduleGrid: React.FC = () => {
         {/* 时间表头 */}
         <div className="sticky top-0 z-10 flex bg-cc-grid-header border-b border-cc-border-subtle"
           style={{ height: HEADER_H, minWidth: totalWidth + DATE_LABEL_W }}>
-          <div className="flex-shrink-0 border-r border-cc-border-subtle" style={{ width: DATE_LABEL_W }} />
+          <div className="flex-shrink-0 border-r border-cc-border-subtle sticky left-0 z-[11] bg-cc-grid-header" style={{ width: DATE_LABEL_W }} />
           {Array.from({ length: numSlots }).map((_, i) => {
             const mins = dayStartHour * 60 + i * granularity;
             const h = Math.floor(mins / 60);
@@ -267,13 +267,16 @@ export const ScheduleGrid: React.FC = () => {
                 backgroundPosition: `${DATE_LABEL_W}px 0`,
                 backgroundRepeat: 'repeat-x',
               }}>
-              {/* 日期标签 */}
+              {/* 日期标签——sticky 固定在左侧，视觉上在格子外部 */}
               <div data-date-col
-                className="flex-shrink-0 flex flex-col items-center justify-center border-r border-cc-border-subtle text-label"
+                className="flex-shrink-0 flex flex-col items-center justify-center border-r border-cc-border-subtle text-label
+                  sticky left-0 z-[5]"
                 style={{
                   width: DATE_LABEL_W,
                   color: isToday ? 'var(--accent)' : undefined,
-                  backgroundColor: isToday ? 'var(--grid-today)' : undefined,
+                  backgroundColor: isToday
+                    ? 'var(--bg-grid-today)' 
+                    : 'var(--bg-panel)',
                 }}>
                 {isFirstOfMonth && <span className="text-[10px]">{MONTH_NAMES[d.getMonth()]}</span>}
                 <span className="text-[18px] font-[590] leading-none"

@@ -71,7 +71,6 @@ export const TaskBlock: React.FC<TaskBlockProps> = ({
       }
     : {};
 
-  // 根据缩放判断文字大小和是否显示内容
   const blockH = style?.height ? parseFloat(String(style.height)) : 24;
   const tiny = blockH < 28;
   const micro = blockH < 20;
@@ -81,7 +80,7 @@ export const TaskBlock: React.FC<TaskBlockProps> = ({
       ref={setNodeRef}
       className={`task-block absolute rounded-cc-md border overflow-hidden flex items-center gap-1 z-[2]
         transition-all duration-120 hover:shadow-[0_0_0_2px_var(--border-accent)] hover:z-[5]
-        select-none
+        cursor-grab active:cursor-grabbing select-none
         ${isDragging ? 'z-[25]' : ''}
         ${isCompleted ? 'opacity-50' : ''}`}
       style={{
@@ -91,16 +90,17 @@ export const TaskBlock: React.FC<TaskBlockProps> = ({
         minHeight: '16px',
         ...style,
         ...dragStyle,
-        paddingLeft: tiny ? 2 : 4,
-        paddingRight: tiny ? 2 : 4,
+        paddingLeft: tiny ? 2 : 5,
+        paddingRight: tiny ? 2 : 5,
       }}
       {...attributes}
+      {...listeners}
       onClick={handleClick}
     >
       {/* 完成勾选框 */}
       {seg && !tiny && (
         <span
-          className={`flex-shrink-0 flex items-center justify-center rounded-cc-sm cursor-pointer
+          className={`flex-shrink-0 flex items-center justify-center rounded-cc-sm
             ${isCompleted
               ? 'bg-cc-success text-white'
               : 'border border-current opacity-30 hover:opacity-70'}`}
@@ -123,7 +123,7 @@ export const TaskBlock: React.FC<TaskBlockProps> = ({
           ${tiny ? 'text-[9px]' : 'text-[12px]'}
           ${micro ? 'text-[8px]' : ''}
           ${isCompleted ? 'line-through' : ''}`}
-        style={{ whiteSpace: tiny ? 'nowrap' : 'nowrap' }}
+        style={{ whiteSpace: 'nowrap' }}
       >
         {task.name}
       </span>
@@ -135,15 +135,9 @@ export const TaskBlock: React.FC<TaskBlockProps> = ({
         </span>
       )}
 
-      {/* 拖拽手柄——只有这里触发拖拽 */}
-      {!isCompleted && (
-        <span
-          className={`flex-shrink-0 text-[10px] opacity-40 hover:opacity-80 ml-auto leading-[1.3]
-            cursor-grab active:cursor-grabbing rounded-cc-sm hover:bg-black/10 px-[2px]`}
-          style={!dragStyle.transform ? {} : {}}
-          {...listeners}
-          onPointerDown={(e) => e.stopPropagation()}
-        >
+      {/* 拖拽提示标 */}
+      {!isCompleted && !tiny && (
+        <span className="flex-shrink-0 text-[10px] opacity-30 leading-[1.3] ml-auto pointer-events-none">
           ⠿
         </span>
       )}
