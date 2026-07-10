@@ -80,7 +80,7 @@ export const TaskBlock: React.FC<TaskBlockProps> = ({
       ref={setNodeRef}
       className={`task-block absolute rounded-cc-md border overflow-hidden flex items-center gap-1 z-[2]
         transition-all duration-120 hover:shadow-[0_0_0_2px_var(--border-accent)] hover:z-[5]
-        cursor-grab active:cursor-grabbing select-none
+        cursor-pointer select-none
         ${isDragging ? 'z-[25]' : ''}
         ${isCompleted ? 'opacity-50' : ''}`}
       style={{
@@ -137,7 +137,7 @@ export const TaskBlock: React.FC<TaskBlockProps> = ({
 
       {/* 拖拽提示标 */}
       {!isCompleted && !tiny && (
-        <span className="flex-shrink-0 text-[10px] opacity-30 leading-[1.3] ml-auto pointer-events-none">
+        <span className="flex-shrink-0 text-[10px] opacity-30 hover:opacity-80 leading-[1.3] ml-auto cursor-grab active:cursor-grabbing rounded-cc-sm hover:bg-black/10 px-[2px]">
           ⠿
         </span>
       )}
