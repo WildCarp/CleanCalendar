@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useRef } from 'react';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
 import { Toggle } from '../ui/Toggle';
@@ -153,45 +153,6 @@ export const SettingsModal: React.FC = () => {
                 checked={settings.darkMode}
                 onChange={v => updateSettings({ darkMode: v })}
               />
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-caption text-cc-text-tertiary">坐标轴交换</span>
-              <Toggle
-                checked={settings.axisSwapped}
-                onChange={v => updateSettings({ axisSwapped: v })}
-              />
-            </div>
-            <div>
-              <label className="text-caption text-cc-text-tertiary mb-1 block">
-                时间粒度：{settings.timeGranularity} 分钟
-              </label>
-              <select
-                className="w-full px-[10px] py-[6px] text-body bg-cc-surface text-cc-text-primary border border-cc-border-default rounded-cc-lg outline-none"
-                value={settings.timeGranularity}
-                onChange={e => updateSettings({ timeGranularity: parseInt(e.target.value) })}
-              >
-                <option value={10}>10 分钟</option>
-                <option value={15}>15 分钟</option>
-                <option value={20}>20 分钟</option>
-                <option value={30}>30 分钟</option>
-                <option value={60}>60 分钟</option>
-              </select>
-            </div>
-            <div>
-              <label className="text-caption text-cc-text-tertiary mb-1 block">
-                显示天数：{settings.displayDays} 天
-              </label>
-              <select
-                className="w-full px-[10px] py-[6px] text-body bg-cc-surface text-cc-text-primary border border-cc-border-default rounded-cc-lg outline-none"
-                value={settings.displayDays}
-                onChange={e => updateSettings({ displayDays: parseInt(e.target.value) })}
-              >
-                <option value={1}>1 天</option>
-                <option value={3}>3 天</option>
-                <option value={7}>7 天</option>
-                <option value={14}>14 天</option>
-                <option value={28}>28 天</option>
-              </select>
             </div>
           </div>
         </div>
