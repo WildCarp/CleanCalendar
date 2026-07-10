@@ -12,15 +12,12 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v2
-        with:
-          version: '9'
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: 'pnpm'
-      - run: pnpm install
-      - run: pnpm build
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run build
       - uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
