@@ -480,18 +480,231 @@ CleanCalendar/
 ├── vite.config.ts
 ├── tailwind.config.js             # DESIGN.md 色板映射
 ├── tsconfig.json
+├── .gitignore                     # Node / Vite / IDE / OS 忽略规则（见 §10.1）
+├── README.md                      # 项目说明、快速开始、技术栈（见 §10.2）
+├── LICENSE                        # MIT
 ├── .github/
 │   └── workflows/
 │       ├── deploy.yml             # GitHub Pages 自动部署
 │       └── update-holidays.yml    # 每月自动更新节假日数据
-└── README.md
 ```
 
 ---
 
-## 10. 构建与部署
+## 10. GitHub 仓库配置与部署
 
-### 10.1 开发环境
+### 10.1 仓库初始化
+
+#### 已创建仓库
+
+| 项目 | 值 |
+|------|-----|
+| GitHub 用户名 | `WildCarp` |
+| 仓库名 | `CleanCalendar` |
+| 仓库地址 | `https://github.com/WildCarp/CleanCalendar` |
+| Pages 地址 | `https://wildcarp.github.io/CleanCalendar/` |
+| 默认分支 | `main` |
+| 可见性 | Public |
+
+#### 创建仓库（已由用户完成）
+
+1. 在 GitHub 上创建新仓库，名称 `CleanCalendar`
+2. 仓库可见性：**Public**（GitHub Pages 免费；Private 需 GitHub Pro）
+3. 可勾选 "Add a README file"（已创建，预览页面 `preview.html`、设计规范 `DESIGN.md`、本规格书已推送至仓库）
+
+#### 仓库设置
+
+创建仓库后，进入 **Settings** 进行以下配置：
+
+| 设置项 | 路径 | 值 | 说明 |
+|--------|------|-----|------|
+| Default branch | Settings → General → Default branch | `main` | 主开发分支 |
+| Pages Source | Settings → Pages → Build and deployment | **GitHub Actions** | 由 deploy.yml 自动部署，无需手动选分支 |
+| Environments | Settings → Environments | `github-pages`（自动创建） | 部署目标环境，首次 Actions 运行后自动出现 |
+| Actions permissions | Settings → Actions → General | Allow all actions | 默认即可 |
+
+#### 分支策略
+
+```
+main          ← 开发分支，所有代码提交到这里
+gh-pages      ← 部署分支，由 GitHub Actions 自动生成（peaceiris/actions-gh-pages）
+                 ⚠️ 不要手动修改此分支
+```
+
+- **main 分支**：日常开发、PR、代码审查
+- **gh-pages 分支**：仅 Actions 写入，存放 `dist/` 构建产物
+
+#### Git 认证配置
+
+由于 WorkBuddy 沙箱环境没有交互式终端（无 `/dev/tty`），Git 推送时需使用 Personal Access Token 认证。配置方式：
+
+1. **生成 PAT**：GitHub → Settings → Developer settings → Personal access tokens → Tokens (classic) → Generate new token (classic)，勾选 `repo` 权限
+2. **本地配置**：在项目目录执行以下命令设置临时凭据存储
+
+```bash
+# 方式一：每次推送时通过 URL 携带 token（适合沙箱环境）
+git remote set-url origin https://WildCarp:<TOKEN>@github.com/WildCarp/CleanCalendar.git
+GIT_TERMINAL_PROMPT=0 GIT_ASKPASS=echo git push origin main
+# 推送完毕后恢复
+git remote set-url origin https://github.com/WildCarp/CleanCalendar.git
+
+# 方式二：Git Credential Manager（适合有交互终端的环境）
+# 弹窗时选择 "manager"，然后输入用户名 WildCarp、密码填 PAT
+git config credential.helper manager
+```
+
+> **注意**：PAT 是敏感信息，不要提交到仓库中。GitHub 会定期轮换 PAT，失效后需重新生成。
+
+#### 本地初始化（已完成）
+
+仓库已初始化并推送了以下文件：
+- `preview.html` — 设计预览页面
+- `DESIGN.md` — 设计规范
+- `CleanCalendar_Spec_Web.md` — 本规格书
+
+```bash
+# 在项目根目录
+git init
+git remote add origin https://github.com/WildCarp/CleanCalendar.git
+git branch -M main
+# 后续开发时正常 git add / commit / push 即可
+```
+
+首次 push 到 main 分支后，需在 Settings → Pages 中开启 GitHub Pages（Source 选 **GitHub Actions**）。构建部署后访问 `https://wildcarp.github.io/CleanCalendar/` 即可看到应用。
+
+---
+
+### 10.2 .gitignore
+
+```gitignore
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build output
+dist/
+build/
+
+# Vite
+.vite/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Debug
+npm-debug.log*
+pnpm-debug.log*
+
+# Test
+coverage/
+
+# Misc
+*.local
+```
+
+---
+
+### 10.3 README.md 结构
+
+```markdown
+# CleanCalendar
+
+轻量级智能日程安排 Web 应用。基于紧急程度 × 重要程度的权重排程算法，
+自动为你的任务找到最优时间窗口。
+
+## 功能
+
+- 📅 智能排程——按优先级自动安排任务到空闲时间段
+- 🏷️ 标签组——工作/个人分类，不同颜色区分
+- 🖱️ 拖拽调整——手动拖动任务格子微调时间
+- 🌓 亮色/暗色——跟随系统或手动切换
+- 📱 响应式——桌面、平板、手机均可使用
+- 📦 纯本地——所有数据存储在浏览器中，无需注册
+
+## 快速开始
+
+访问 **https://wildcarp.github.io/CleanCalendar/** 即可使用。
+
+## 技术栈
+
+React 18 · TypeScript · Vite 5 · Tailwind CSS 3 · Zustand · Dexie.js · @dnd-kit
+
+## 本地开发
+
+\`\`\`bash
+pnpm install
+pnpm dev        # http://localhost:5173
+pnpm build      # 构建到 dist/
+\`\`\`
+
+## 设计系统
+
+详见 [DESIGN.md](./DESIGN.md)（基于 Linear 设计语言）
+
+## License
+
+MIT
+```
+
+> 部署后在 README 开头添加 GitHub Actions 部署状态徽章。
+
+---
+
+### 10.4 GitHub Pages 设置
+
+#### 部署 URL
+
+仓库已创建，GitHub Pages 域名为：
+
+```
+https://wildcarp.github.io/CleanCalendar/
+```
+
+#### Vite base 配置
+
+根据仓库名修改 `vite.config.ts`：
+
+```typescript
+// vite.config.ts
+export default defineConfig({
+  base: '/CleanCalendar/',   // 仓库名为 CleanCalendar，已确认
+  // ...其他配置
+});
+```
+
+> **已确认：** 仓库名为 `CleanCalendar`，Vite `base` 固定为 `/CleanCalendar/`。无需再询问用户。
+
+#### 部署状态检查
+
+推送 main 分支后：
+1. 进入仓库 **Actions** 标签页，查看 `Deploy to GitHub Pages` workflow 运行状态
+2. 成功后进入 **Settings → Pages**，顶部会显示 "Your site is live at https://..."
+3. 首次部署可能需要 1-5 分钟生效
+
+#### 自定义域名（可选）
+
+如需使用自定义域名：
+1. Settings → Pages → Custom domain → 填入域名并 Save
+2. 在 DNS 服务商添加 CNAME 记录指向 `<your-username>.github.io`
+3. 勾选 "Enforce HTTPS"（等待 SSL 证书自动签发，约 15 分钟）
+
+---
+
+### 10.5 开发环境
 
 ```bash
 pnpm install
@@ -524,8 +737,6 @@ pnpm preview      # 本地预览构建产物
 
 ### 10.3 GitHub Pages 部署
 
-> **⚠️ 开发前确认：** 仓库名称未定，需询问用户。Vite 的 `base` 配置取决于仓库名（如仓库名为 `CleanCalendar`，则 `base: '/CleanCalendar/'`；若为用户主页仓库 `<username>.github.io`，则 `base: '/'`）。
-
 GitHub Actions 工作流 `.github/workflows/deploy.yml`：
 
 ```yaml
@@ -555,7 +766,7 @@ jobs:
           publish_dir: ./dist
 ```
 
-部署后访问：`https://<your-username>.github.io/CleanCalendar/`
+部署后访问：`https://wildcarp.github.io/CleanCalendar/`
 
 ### 10.4 节假日数据自动更新
 
