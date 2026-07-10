@@ -1,0 +1,22 @@
+name: Update Holiday Data
+
+on:
+  schedule:
+    - cron: '0 0 1 * *'
+  workflow_dispatch:
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch holiday data
+        run: |
+          CURRENT_YEAR=$(date +%Y)
+          NEXT_YEAR=$((CURRENT_YEAR + 1))
+          mkdir -p public/holidays
+          curl -s "https://holiday.ailcc.com/api/holiday/year/$CURRENT_YEAR" -o "public/holidays/$CURRENT_YEAR.json" || echo "[]" > "public/holidays/$CURRENT_YEAR.json"
+          curl -s "https://holiday.ailcc.com/api/holiday/year/$NEXT_YEAR" -o "public/holidays/$NEXT_YEAR.json" || echo "[]" > "public/holidays/$NEXT_YEAR.json"
+      - uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore: update holiday data"

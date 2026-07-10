@@ -1,0 +1,961 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CleanCalendar — Design Preview</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,510;14..32,590&display=swap');
+
+  :root {
+    --bg-canvas: #0d0d0e;
+    --bg-panel: #121213;
+    --bg-surface: #1a1a1c;
+    --bg-surface-hover: #222225;
+    --bg-grid-today: rgba(255,255,255,0.03);
+    --bg-grid-header: #0f0f11;
+    --bg-task-completed: rgba(128, 128, 128, 0.08);
+    --text-primary: #f0f0f2;
+    --text-secondary: #c8ccd4;
+    --text-tertiary: #828690;
+    --text-disabled: #5a5d65;
+    --accent: #6b6e75;
+    --accent-hover: #81848a;
+    --accent-subtle: rgba(107, 110, 117, 0.10);
+    --switch-on: #27a644;
+    --status-success: #27a644;
+    --status-warning: #e5a83e;
+    --btn-danger: #e5484d;
+    --btn-ghost-bg: rgba(255,255,255,0.06);
+    --border-subtle: rgba(255,255,255,0.04);
+    --border-default: rgba(255,255,255,0.06);
+    --border-strong: rgba(255,255,255,0.10);
+    --border-accent: rgba(107,110,117,0.25);
+    --radius-sm: 4px;
+    --radius-md: 6px;
+    --radius-lg: 8px;
+    --radius-xl: 12px;
+    --radius-full: 9999px;
+    --font: 'Inter', system-ui, -apple-system, sans-serif;
+    --grid-hour-height: 48px;
+  }
+
+  [data-theme="light"] {
+    --bg-canvas: #fafaf9;
+    --bg-panel: #f5f4f3;
+    --bg-surface: #ffffff;
+    --bg-surface-hover: #f0efee;
+    --bg-grid-today: rgba(0, 0, 0, 0.03);
+    --bg-grid-header: #f3f2f0;
+    --bg-task-completed: rgba(0, 0, 0, 0.04);
+    --text-primary: #1a1a1c;
+    --text-secondary: #585a60;
+    --text-tertiary: #8e9098;
+    --text-disabled: #b8bac2;
+    --accent: #6b6e75;
+    --accent-hover: #55585e;
+    --accent-subtle: rgba(107, 110, 117, 0.08);
+    --switch-on: #27a644;
+    --status-success: #27a644;
+    --status-warning: #e5a83e;
+    --btn-ghost-bg: rgba(0,0,0,0.06);
+    --border-subtle: rgba(0,0,0,0.05);
+    --border-default: rgba(0,0,0,0.08);
+    --border-strong: rgba(0,0,0,0.12);
+    --border-accent: rgba(107,110,117,0.20);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: var(--font);
+    font-feature-settings: 'cv01', 'ss03';
+    font-size: 13px;
+    font-weight: 400;
+    line-height: 1.5;
+    color: var(--text-primary);
+    background: var(--bg-canvas);
+    height: 100vh;
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* ── Top Bar ── */
+  .topbar {
+    height: 44px;
+    background: var(--bg-panel);
+    border-bottom: 1px solid var(--border-subtle);
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    gap: 12px;
+    z-index: 90;
+    position: relative;
+  }
+  .topbar-brand { font-size: 15px; font-weight: 590; color: var(--text-primary); letter-spacing: -0.16px; }
+  .topbar-spacer { flex: 1; }
+  .btn { 
+    display: inline-flex; align-items: center; gap: 6px; 
+    border: none; cursor: pointer; font-family: var(--font);
+    font-feature-settings: 'cv01', 'ss03';
+    transition: all 120ms ease;
+    user-select: none;
+  }
+  .btn:active { transform: scale(0.97); }
+  .btn-ghost {
+    background: var(--btn-ghost-bg); color: var(--text-secondary);
+    border: 1px solid var(--border-default); border-radius: var(--radius-md);
+    padding: 5px 12px; font-size: 13px; font-weight: 510;
+  }
+  .btn-ghost:hover { background: var(--bg-surface-hover); color: var(--text-primary); }
+  .btn-icon {
+    background: transparent; color: var(--text-tertiary); border-radius: 50%;
+    width: 30px; height: 30px; align-items: center; justify-content: center;
+    padding: 0; font-size: 15px;
+  }
+  .btn-icon:hover { background: var(--bg-surface-hover); color: var(--text-primary); }
+  .btn-primary {
+    background: rgba(39,166,68,0.12); color: #27a644;
+    border: 1px solid rgba(39,166,68,0.20); border-radius: var(--radius-md);
+    padding: 5px 14px; font-size: 13px; font-weight: 510;
+  }
+  .btn-primary:hover { background: rgba(39,166,68,0.20); }
+  .btn-danger {
+    background: rgba(229,72,77,0.12); color: #e5484d; 
+    border: 1px solid rgba(229,72,77,0.20); border-radius: var(--radius-md);
+    padding: 5px 14px; font-size: 13px; font-weight: 510;
+  }
+  .btn-danger:hover { background: rgba(229,72,77,0.20); }
+  .btn-subtle {
+    background: transparent; color: var(--text-tertiary); border-radius: var(--radius-sm);
+    padding: 3px 8px; font-size: 12px; font-weight: 400;
+  }
+  .btn-subtle:hover { background: var(--bg-surface-hover); color: var(--text-secondary); }
+
+  /* ── Layout ── */
+  .app-body {
+    display: flex; height: calc(100vh - 44px);
+  }
+
+  /* ── Sidebar ── */
+  .sidebar {
+    width: 240px; min-width: 240px;
+    background: var(--bg-panel);
+    border-right: 1px solid var(--border-default);
+    display: flex; flex-direction: column;
+    overflow-y: auto;
+    transition: margin-left 220ms ease, opacity 220ms ease;
+  }
+  .sidebar.collapsed { margin-left: -240px; opacity: 0; pointer-events: none; }
+  .sidebar-section {
+    padding: 12px 12px 8px;
+  }
+  .sidebar-section-title {
+    font-size: 12px; font-weight: 590; color: var(--text-tertiary);
+    letter-spacing: 0.02em; margin-bottom: 4px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .sidebar-item {
+    display: flex; align-items: center; gap: 8px;
+    padding: 5px 10px; border-radius: var(--radius-md);
+    font-size: 13px; font-weight: 510; color: var(--text-secondary);
+    cursor: pointer; transition: background 100ms;
+  }
+  .sidebar-item:hover { background: var(--bg-surface-hover); }
+  .sidebar-item.active { background: var(--accent-subtle); color: var(--text-primary); }
+  .sidebar-item .dot {
+    width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
+  }
+  .sidebar-sub-item {
+    padding: 4px 10px 4px 28px; font-size: 13px; font-weight: 400;
+    color: var(--text-tertiary); cursor: pointer; border-radius: var(--radius-sm);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .sidebar-sub-item:hover { background: var(--bg-surface-hover); color: var(--text-secondary); }
+  .sidebar-divider {
+    height: 1px; background: var(--border-subtle); margin: 8px 12px;
+  }
+  .sidebar-badge {
+    font-size: 11px; color: var(--text-tertiary); margin-left: auto;
+    background: var(--bg-surface); padding: 1px 6px; border-radius: var(--radius-full);
+  }
+
+  /* ── Main Grid Area ── */
+  .grid-area {
+    flex: 1; overflow: auto; position: relative;
+    background: var(--bg-canvas);
+  }
+  .grid-inner {
+    display: grid;
+    grid-template-columns: 52px repeat(7, 1fr);
+    grid-template-rows: 40px;
+    min-width: 800px;
+  }
+
+  .day-header {
+    background: var(--bg-grid-header);
+    border-bottom: 1px solid var(--border-subtle);
+    border-right: 1px solid var(--border-subtle);
+    display: flex; align-items: center; justify-content: center;
+    flex-direction: column; padding: 4px;
+    font-size: 11px; font-weight: 510; color: var(--text-tertiary);
+    text-transform: uppercase; letter-spacing: 0.04em;
+  }
+  .day-header .day-num {
+    font-size: 18px; font-weight: 590; color: var(--text-primary);
+    line-height: 1; margin-bottom: 1px;
+  }
+  .day-header.today {
+    background: var(--bg-grid-today);
+    color: var(--accent);
+  }
+  .day-header.today .day-num { color: var(--accent); }
+  .corner-cell {
+    background: var(--bg-grid-header);
+    border-bottom: 1px solid var(--border-subtle);
+    border-right: 1px solid var(--border-subtle);
+  }
+
+  .time-label {
+    display: flex; align-items: flex-start; justify-content: flex-end;
+    padding: 2px 8px 0 0;
+    font-size: 11px; font-weight: 510; color: var(--text-tertiary);
+    border-right: 1px solid var(--border-subtle);
+    font-variant-numeric: tabular-nums;
+    height: var(--grid-hour-height);
+  }
+  .time-label.hour-mark { border-bottom: 1px solid var(--border-default); }
+  .time-label.sub-hour {
+    border-bottom: 1px solid var(--border-subtle);
+    font-size: 10px; font-weight: 400;
+  }
+  .grid-cell {
+    border-right: 1px solid var(--border-subtle);
+    border-bottom: 1px solid var(--border-subtle);
+    height: var(--grid-hour-height);
+    position: relative;
+  }
+  .grid-cell.hour-mark { border-bottom-color: var(--border-default); }
+  .grid-cell.today-col { background: var(--bg-grid-today); }
+
+  .task-block {
+    position: absolute; left: 2px; right: 2px;
+    border-radius: var(--radius-md);
+    border: 1px solid;
+    font-size: 12px; font-weight: 400;
+    padding: 3px 6px;
+    cursor: pointer;
+    overflow: hidden;
+    display: flex; align-items: flex-start; gap: 4px;
+    transition: box-shadow 120ms, transform 120ms;
+    z-index: 2;
+    min-height: 20px;
+  }
+  .task-block:hover {
+    box-shadow: 0 0 0 2px var(--border-accent);
+    z-index: 5;
+  }
+  .task-block .task-emoji { flex-shrink: 0; line-height: 1.4; }
+  .task-block .task-name { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.4; }
+  .task-block .task-segment { font-size: 10px; opacity: 0.6; flex-shrink: 0; line-height: 1.4; }
+  .task-block.completed { opacity: 0.5; }
+  .task-block.completed .task-name { text-decoration: line-through; }
+
+  /* ── Detail Panel ── */
+  .detail-panel {
+    width: 280px; min-width: 280px;
+    background: var(--bg-panel);
+    border-left: 1px solid var(--border-default);
+    display: flex; flex-direction: column;
+    overflow-y: auto;
+    transition: margin-right 220ms ease, opacity 220ms ease;
+  }
+  .detail-panel.collapsed { margin-right: -280px; opacity: 0; pointer-events: none; }
+  .detail-header { padding: 16px; border-bottom: 1px solid var(--border-subtle); }
+  .detail-title { font-size: 18px; font-weight: 590; letter-spacing: -0.22px; margin-bottom: 4px; }
+  .detail-subtitle { font-size: 12px; color: var(--text-tertiary); }
+  .detail-body { padding: 16px; display: flex; flex-direction: column; gap: 16px; }
+  .detail-label {
+    font-size: 12px; font-weight: 510; color: var(--text-tertiary);
+    margin-bottom: 6px; letter-spacing: 0.02em;
+  }
+  .detail-input {
+    width: 100%; padding: 6px 10px; font-size: 13px; font-weight: 400;
+    font-family: var(--font); font-feature-settings: 'cv01', 'ss03';
+    background: var(--bg-surface); color: var(--text-primary);
+    border: 1px solid var(--border-default); border-radius: var(--radius-lg);
+    outline: none; transition: border-color 120ms;
+  }
+  .detail-input:focus {
+    border-color: var(--border-accent);
+    box-shadow: 0 0 0 3px var(--accent-subtle);
+  }
+  .detail-row { display: flex; gap: 12px; }
+  .detail-row > * { flex: 1; }
+  .detail-toggle { display: flex; align-items: center; justify-content: space-between; padding: 4px 0; }
+  .detail-segments { display: flex; flex-direction: column; gap: 4px; }
+  .detail-segment {
+    padding: 5px 8px; font-size: 12px; color: var(--text-secondary);
+    background: var(--bg-surface); border-radius: var(--radius-sm);
+    border-left: 3px solid var(--accent);
+  }
+  .detail-segment.completed { border-left-color: var(--status-success); opacity: 0.6; }
+  .detail-footer {
+    padding: 12px 16px; border-top: 1px solid var(--border-subtle);
+    display: flex; gap: 8px;
+  }
+
+  /* ── Custom Select ── */
+  .custom-select {
+    position: relative; width: 100%;
+  }
+  .custom-select-trigger {
+    width: 100%; padding: 6px 28px 6px 10px; font-size: 13px; font-weight: 400;
+    font-family: var(--font); font-feature-settings: 'cv01', 'ss03';
+    background: var(--bg-surface); color: var(--text-primary);
+    border: 1px solid var(--border-default); border-radius: var(--radius-lg);
+    cursor: pointer; text-align: left;
+    transition: border-color 120ms;
+    position: relative; user-select: none;
+  }
+  .custom-select-trigger:hover { border-color: var(--border-strong); }
+  .custom-select.open .custom-select-trigger {
+    border-color: var(--border-accent);
+    box-shadow: 0 0 0 3px var(--accent-subtle);
+  }
+  .custom-select-arrow {
+    position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+    pointer-events: none; color: var(--text-tertiary); font-size: 10px;
+    transition: transform 180ms;
+  }
+  .custom-select.open .custom-select-arrow { transform: translateY(-50%) rotate(180deg); }
+  .custom-select-menu {
+    position: absolute; top: calc(100% + 4px); left: 0; right: 0;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-strong); border-radius: var(--radius-lg);
+    overflow: hidden; z-index: 200; display: none;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+  }
+  [data-theme="light"] .custom-select-menu { box-shadow: 0 8px 24px rgba(0,0,0,0.12); }
+  .custom-select.open .custom-select-menu { display: block; }
+  .custom-select-option {
+    padding: 7px 10px; font-size: 13px; font-weight: 400; color: var(--text-secondary);
+    cursor: pointer; transition: background 80ms;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .custom-select-option:hover { background: var(--bg-surface-hover); color: var(--text-primary); }
+  .custom-select-option.selected { color: var(--text-primary); font-weight: 510; }
+  .custom-select-option .opt-dot,
+  .custom-select-trigger .opt-dot {
+    width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+    display: inline-block; vertical-align: middle; margin-right: 6px;
+  }
+
+  /* ── Date Picker ── */
+  .date-picker {
+    position: relative;
+  }
+  .date-picker-trigger {
+    width: 100%; padding: 6px 10px; font-size: 13px; font-weight: 400;
+    font-family: var(--font); font-feature-settings: 'cv01', 'ss03';
+    background: var(--bg-surface); color: var(--text-primary);
+    border: 1px solid var(--border-default); border-radius: var(--radius-lg);
+    cursor: pointer; text-align: left; user-select: none;
+    transition: border-color 120ms;
+  }
+  .date-picker-trigger:hover { border-color: var(--border-strong); }
+  .date-picker.open .date-picker-trigger {
+    border-color: var(--border-accent);
+    box-shadow: 0 0 0 3px var(--accent-subtle);
+  }
+  .date-picker-popup {
+    position: absolute; top: calc(100% + 4px); left: 0;
+    width: 236px; background: var(--bg-surface);
+    border: 1px solid var(--border-strong); border-radius: var(--radius-lg);
+    padding: 10px; z-index: 200; display: none;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+  }
+  [data-theme="light"] .date-picker-popup { box-shadow: 0 8px 24px rgba(0,0,0,0.12); }
+  .date-picker.open .date-picker-popup { display: block; }
+  .date-picker-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 8px;
+  }
+  .date-picker-month {
+    font-size: 13px; font-weight: 590; color: var(--text-primary);
+  }
+  .date-picker-nav {
+    width: 24px; height: 24px; border-radius: var(--radius-md);
+    border: 1px solid var(--border-default); background: transparent;
+    color: var(--text-tertiary); cursor: pointer; font-size: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font);
+  }
+  .date-picker-nav:hover { background: var(--bg-surface-hover); color: var(--text-primary); }
+  .date-picker-weekdays {
+    display: grid; grid-template-columns: repeat(7, 1fr);
+    font-size: 10px; font-weight: 590; color: var(--text-tertiary);
+    text-align: center; margin-bottom: 4px;
+  }
+  .date-picker-days {
+    display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px;
+  }
+  .date-picker-day {
+    width: 28px; height: 28px; border-radius: var(--radius-md);
+    border: none; background: transparent;
+    font-size: 12px; font-weight: 400; color: var(--text-secondary);
+    cursor: pointer; font-family: var(--font);
+    display: flex; align-items: center; justify-content: center;
+    transition: all 80ms;
+  }
+  .date-picker-day:hover { background: var(--bg-surface-hover); }
+  .date-picker-day.selected {
+    background: var(--text-primary); color: var(--bg-surface); font-weight: 590;
+  }
+  .date-picker-day.today:not(.selected) {
+    color: var(--text-primary); font-weight: 590;
+  }
+  .date-picker-day.other-month { color: var(--text-disabled); }
+  .date-picker-time {
+    display: flex; gap: 6px; margin-top: 8px; padding-top: 8px;
+    border-top: 1px solid var(--border-subtle); align-items: center;
+  }
+  .time-inline {
+    width: 48px; padding: 4px 6px; font-size: 12px; font-weight: 400;
+    font-family: var(--font); font-feature-settings: 'cv01', 'ss03';
+    background: var(--bg-canvas); color: var(--text-primary);
+    border: 1px solid var(--border-default); border-radius: var(--radius-md);
+    text-align: center; outline: none;
+  }
+  .time-inline:focus { border-color: var(--border-accent); }
+  .time-sep { font-size: 13px; color: var(--text-tertiary); }
+
+  /* Dot Rating */
+  .dot-rating {
+    display: flex; gap: 6px; align-items: center;
+  }
+  .dot-rating .dot-btn {
+    width: 20px; height: 20px; border-radius: 50%;
+    border: 1.5px solid var(--border-strong);
+    background: transparent;
+    cursor: pointer; transition: all 120ms ease;
+    flex-shrink: 0; padding: 0;
+    box-sizing: border-box; line-height: 0; font-size: 0;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  .dot-rating .dot-btn:hover { border-color: var(--accent); }
+  .dot-rating .dot-btn.filled { border-color: transparent; }
+  .dot-rating .dot-btn.filled:hover { filter: brightness(0.85); }
+
+  /* Switch */
+  .switch {
+    width: 30px; height: 18px; background: var(--border-default);
+    border-radius: var(--radius-full); position: relative;
+    cursor: pointer; transition: background 150ms;
+    border: 1px solid transparent; box-sizing: border-box;
+  }
+  .switch.on { background: var(--switch-on); }
+  .switch::after {
+    content: ''; position: absolute; top: 1px; left: 1px;
+    width: 14px; height: 14px; border-radius: 50%;
+    background: #ffffff; transition: transform 150ms;
+  }
+  .switch.on::after { transform: translateX(13px); }
+
+  /* Overlay for click-outside */
+  .popup-overlay {
+    position: fixed; inset: 0; z-index: 150; display: none;
+  }
+  .popup-overlay.active { display: block; }
+
+  /* Tooltip badge */
+  .theme-badge {
+    position: fixed; bottom: 16px; right: 16px;
+    padding: 6px 12px; background: var(--bg-surface);
+    border: 1px solid var(--border-default); border-radius: var(--radius-lg);
+    font-size: 12px; font-weight: 510; color: var(--text-tertiary);
+    z-index: 300; pointer-events: none; opacity: 0;
+    transition: opacity 300ms;
+  }
+  .theme-badge.show { opacity: 1; pointer-events: auto; }
+
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border-default); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--border-strong); }
+</style>
+</head>
+<body>
+
+<!-- Popup overlay (click-outside) -->
+<div class="popup-overlay" id="popupOverlay" onclick="closeAllPopups()"></div>
+
+<!-- Top Bar -->
+<div class="topbar">
+  <span class="btn-icon" style="display:flex;" onclick="toggleSidebar()" title="切换侧栏">☰</span>
+  <span class="topbar-brand">CleanCalendar</span>
+  <div class="topbar-spacer"></div>
+  <span class="btn btn-ghost" onclick="scrollToToday()">📅 今天</span>
+  <span class="btn btn-icon" style="display:flex;" onclick="toggleTheme()" title="切换主题">◐</span>
+</div>
+
+<!-- App Body -->
+<div class="app-body">
+  <!-- Sidebar -->
+  <div class="sidebar" id="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-section-title">标签组 <span class="btn-subtle">+</span></div>
+      <div class="sidebar-item active"><span class="dot" style="background:#6c7aef;"></span> 默认</div>
+      <div class="sidebar-sub-item">📝 制作 Slides 模版</div>
+      <div class="sidebar-item"><span class="dot" style="background:#ef6c6c;"></span> 工作 <span class="sidebar-badge">2</span></div>
+      <div class="sidebar-sub-item">🎨 整理素材库</div>
+      <div class="sidebar-sub-item">📊 Shader 性能测试</div>
+      <div class="sidebar-item"><span class="dot" style="background:#6ccf8a;"></span> 个人</div>
+      <div class="sidebar-sub-item">🏃 跑步 5km</div>
+    </div>
+    <div class="sidebar-divider"></div>
+    <div class="sidebar-section">
+      <div class="sidebar-section-title">未安排 <span style="font-size:11px;font-weight:400;color:var(--text-tertiary);">3</span></div>
+      <div class="sidebar-sub-item">🛠️ 修复 DCC 导出脚本</div>
+      <div class="sidebar-sub-item">📖 阅读 Paper: NeRF</div>
+      <div class="sidebar-sub-item">💡 优化渲染管线</div>
+    </div>
+    <div class="sidebar-divider"></div>
+    <div class="sidebar-section">
+      <div class="sidebar-section-title">已完成</div>
+      <div class="sidebar-sub-item" style="text-decoration:line-through;opacity:0.5;">✅ Shader 调试完成</div>
+      <div class="sidebar-sub-item" style="text-decoration:line-through;opacity:0.5;">✅ 周会纪要</div>
+    </div>
+  </div>
+
+  <!-- Main Grid -->
+  <div class="grid-area" id="gridArea">
+    <div class="grid-inner" id="gridInner"></div>
+  </div>
+
+  <!-- Detail Panel -->
+  <div class="detail-panel" id="detailPanel">
+    <div class="detail-header">
+      <div class="detail-title" id="detailName">🎨 整理素材库</div>
+      <div class="detail-subtitle">工作标签组 · 30 分钟</div>
+    </div>
+    <div class="detail-body">
+      <!-- Custom Select: Tag Group -->
+      <div class="detail-group">
+        <div class="detail-label">标签组</div>
+        <div class="custom-select" id="tagGroupSelect">
+          <div class="custom-select-trigger" onclick="toggleSelect('tagGroupSelect', event)">
+            <span class="opt-dot" style="background:#ef6c6c;"></span> 工作
+            <span class="custom-select-arrow">▾</span>
+          </div>
+          <div class="custom-select-menu">
+            <div class="custom-select-option" data-value="默认" data-color="#6c7aef" onclick="selectOption(this,'tagGroupSelect')">
+              <span class="opt-dot" style="background:#6c7aef;"></span> 默认
+            </div>
+            <div class="custom-select-option selected" data-value="工作" data-color="#ef6c6c" onclick="selectOption(this,'tagGroupSelect')">
+              <span class="opt-dot" style="background:#ef6c6c;"></span> 工作
+            </div>
+            <div class="custom-select-option" data-value="个人" data-color="#6ccf8a" onclick="selectOption(this,'tagGroupSelect')">
+              <span class="opt-dot" style="background:#6ccf8a;"></span> 个人
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="detail-group">
+        <div class="detail-label">名称</div>
+        <input class="detail-input" value="整理素材库" id="detailNameInput">
+      </div>
+
+      <div class="detail-row">
+        <div class="detail-group">
+          <div class="detail-label">开始时间</div>
+          <div class="date-picker" id="startPicker">
+            <div class="date-picker-trigger" onclick="toggleDatePicker('startPicker', event)">7/10 14:00</div>
+            <div class="date-picker-popup"></div>
+          </div>
+        </div>
+        <div class="detail-group">
+          <div class="detail-label">结束时间</div>
+          <div class="date-picker" id="endPicker">
+            <div class="date-picker-trigger" onclick="toggleDatePicker('endPicker', event)">7/12 18:00</div>
+            <div class="date-picker-popup"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="detail-row">
+        <div class="detail-group">
+          <div class="detail-label">重要程度</div>
+          <div class="dot-rating" data-rating="4">
+            <button class="dot-btn filled" data-val="1"></button>
+            <button class="dot-btn filled" data-val="2"></button>
+            <button class="dot-btn filled" data-val="3"></button>
+            <button class="dot-btn filled" data-val="4"></button>
+            <button class="dot-btn" data-val="5"></button>
+          </div>
+        </div>
+        <div class="detail-group">
+          <div class="detail-label">紧急程度</div>
+          <div class="dot-rating" data-rating="2">
+            <button class="dot-btn filled" data-val="1"></button>
+            <button class="dot-btn filled" data-val="2"></button>
+            <button class="dot-btn" data-val="3"></button>
+            <button class="dot-btn" data-val="4"></button>
+            <button class="dot-btn" data-val="5"></button>
+          </div>
+        </div>
+      </div>
+
+      <div class="detail-group">
+        <div class="detail-label">所需时长</div>
+        <input class="detail-input" type="number" value="0.5" step="0.25" placeholder="小时">
+      </div>
+
+      <div class="detail-toggle">
+        <span class="detail-label" style="margin:0;">可碎片化处理</span>
+        <div class="switch"></div>
+      </div>
+      <div class="detail-toggle">
+        <span class="detail-label" style="margin:0;">可影响其他任务</span>
+        <div class="switch on"></div>
+      </div>
+
+      <div class="detail-group">
+        <div class="detail-label">当前安排</div>
+        <div class="detail-segments">
+          <div class="detail-segment">7月10日 14:00–15:00 · 30分钟 (1/2)</div>
+          <div class="detail-segment completed">7月11日 10:00–10:30 · 30分钟 (2/2) ✓</div>
+        </div>
+      </div>
+    </div>
+    <div class="detail-footer">
+      <button class="btn btn-primary" style="flex:1;">重新安排</button>
+      <button class="btn btn-danger" style="flex:1;">删除</button>
+    </div>
+  </div>
+</div>
+
+<div class="theme-badge" id="themeBadge">已切换主题</div>
+
+<script>
+// ── Theme ──
+const html = document.documentElement;
+let isDark = false;
+
+function toggleTheme() {
+  isDark = !isDark;
+  html.setAttribute('data-theme', isDark ? '' : 'light');
+  const badge = document.getElementById('themeBadge');
+  badge.textContent = isDark ? '暗色模式' : '亮色模式';
+  badge.classList.add('show');
+  setTimeout(() => badge.classList.remove('show'), 1500);
+  renderGrid();
+}
+
+// ── Sidebar ──
+let sidebarOpen = true;
+function toggleSidebar() {
+  sidebarOpen = !sidebarOpen;
+  document.getElementById('sidebar').classList.toggle('collapsed', !sidebarOpen);
+}
+
+// ── Mock Data ──
+const weekDays = ['周一','周二','周三','周四','周五','周六','周日'];
+const dates = ['7/6','7/7','7/8','7/9','7/10','7/11','7/12'];
+const todayCol = 4;
+
+const tasks = [
+  { name:'整理素材库', emoji:'🎨', tagColor:'#ef6c6c', col:4, startH:10, durMin:60, seg:'1/2', completed:false },
+  { name:'整理素材库', emoji:'🎨', tagColor:'#ef6c6c', col:5, startH:10, durMin:30, seg:'2/2', completed:true },
+  { name:'Shader 写', emoji:'🖥️', tagColor:'#ef6c6c', col:3, startH:14, durMin:30, seg:null, completed:false, urgent:true },
+  { name:'跑步 5km', emoji:'🏃', tagColor:'#6ccf8a', col:4, startH:17.5, durMin:45, seg:null, completed:false },
+  { name:'Slides 模版', emoji:'📝', tagColor:'#6c7aef', col:5, startH:14, durMin:90, seg:null, completed:false },
+  { name:'Shader 性能', emoji:'📊', tagColor:'#ef6c6c', col:4, startH:11, durMin:45, seg:null, completed:false },
+  { name:'周报撰写', emoji:'📋', tagColor:'#6c7aef', col:4, startH:15.5, durMin:30, seg:null, completed:true },
+  { name:'DCC 脚本', emoji:'🛠️', tagColor:'#6c7aef', col:2, startH:9, durMin:120, seg:'1/2', completed:false },
+  { name:'DCC 脚本', emoji:'🛠️', tagColor:'#6c7aef', col:3, startH:9, durMin:60, seg:'2/2', completed:false },
+];
+
+// ── Render Grid ──
+function renderGrid() {
+  const inner = document.getElementById('gridInner');
+  const hours = [];
+  for (let h = 8; h <= 22; h++) {
+    hours.push({ label: `${h}:00`, isHour: true });
+    hours.push({ label: '', isHour: false });
+  }
+
+  let html = '';
+  html += '<div class="corner-cell"></div>';
+  for (let d = 0; d < 7; d++) {
+    const isToday = d === todayCol;
+    html += `<div class="day-header${isToday ? ' today' : ''}">
+      <span class="day-num">${dates[d]}</span>
+      <span>${weekDays[d]}</span>
+    </div>`;
+  }
+
+  for (let r = 0; r < hours.length; r++) {
+    const h = hours[r];
+    html += `<div class="time-label${h.isHour ? ' hour-mark' : ' sub-hour'}">${h.label}</div>`;
+    for (let d = 0; d < 7; d++) {
+      const isToday = d === todayCol;
+      html += `<div class="grid-cell${h.isHour ? ' hour-mark' : ''}${isToday ? ' today-col' : ''}" 
+        data-col="${d}" data-hour="${8 + r * 0.5}"></div>`;
+    }
+  }
+
+  inner.innerHTML = html;
+
+  requestAnimationFrame(() => {
+    const cells = inner.querySelectorAll('.grid-cell');
+    const firstCell = cells[0];
+    if (!firstCell) return;
+    const cellHeight = firstCell.offsetHeight;
+
+    tasks.forEach(task => {
+      const targetCell = inner.querySelector(`.grid-cell[data-col="${task.col}"][data-hour="${task.startH}"]`);
+      if (!targetCell) return;
+
+      const top = targetCell.offsetTop;
+      const left = targetCell.offsetLeft;
+      const width = targetCell.offsetWidth - 4;
+      const height = cellHeight * (task.durMin / 30) - 4;
+      const bgAlpha = isDark ? '18' : '15';
+      const textBright = isDark ? 1.15 : 0.85;
+
+      const block = document.createElement('div');
+      block.className = 'task-block' + (task.completed ? ' completed' : '');
+      block.style.top = top + 'px';
+      block.style.left = (left + 2) + 'px';
+      block.style.width = width + 'px';
+      block.style.height = Math.max(height, 20) + 'px';
+      block.style.backgroundColor = task.tagColor + bgAlpha;
+      block.style.color = task.tagColor;
+      block.style.borderColor = task.tagColor + (isDark ? '1A' : '33');
+      block.style.filter = `brightness(${textBright})`;
+
+      let segText = task.seg ? ` <span class="task-segment">${task.seg}</span>` : '';
+      block.innerHTML = `<span class="task-emoji">${task.emoji}</span><span class="task-name">${task.name}${task.urgent ? ' ⚡' : ''}</span>${segText}`;
+
+      block.onclick = function(e) {
+        e.stopPropagation();
+        document.getElementById('detailName').textContent = task.emoji + ' ' + task.name;
+        document.getElementById('detailPanel').classList.remove('collapsed');
+      };
+
+      inner.appendChild(block);
+    });
+  });
+}
+
+function scrollToToday() {
+  const todayCell = document.querySelector(`.grid-cell[data-col="${todayCol}"]`);
+  if (todayCell) todayCell.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+}
+
+// ── Custom Select ──
+function toggleSelect(id, e) {
+  e.stopPropagation();
+  const sel = document.getElementById(id);
+  const isOpen = sel.classList.contains('open');
+  closeAllPopups();
+  if (!isOpen) {
+    sel.classList.add('open');
+    document.getElementById('popupOverlay').classList.add('active');
+  }
+}
+
+function selectOption(opt, selectId) {
+  const sel = document.getElementById(selectId);
+  const val = opt.dataset.value;
+  // update trigger text
+  const trigger = sel.querySelector('.custom-select-trigger');
+  const icon = opt.querySelector('.opt-dot');
+  const color = opt.dataset.color;
+  if (icon) {
+    trigger.innerHTML = `<span class="opt-dot" style="background:${color};"></span> ${val} <span class="custom-select-arrow">▾</span>`;
+  } else {
+    trigger.innerHTML = val + ' <span class="custom-select-arrow">▾</span>';
+  }
+  // update selection
+  sel.querySelectorAll('.custom-select-option').forEach(o => o.classList.remove('selected'));
+  opt.classList.add('selected');
+  closeAllPopups();
+}
+
+// ── Date Picker ──
+const pickerStates = {};
+
+function initDatePicker(pickerId, initialDate) {
+  pickerStates[pickerId] = {
+    date: new Date(initialDate),
+    viewYear: initialDate.getFullYear(),
+    viewMonth: initialDate.getMonth()
+  };
+}
+
+function toggleDatePicker(pickerId, e) {
+  e.stopPropagation();
+  const picker = document.getElementById(pickerId);
+  const isOpen = picker.classList.contains('open');
+  closeAllPopups();
+  if (!isOpen) {
+    picker.classList.add('open');
+    document.getElementById('popupOverlay').classList.add('active');
+    renderCalendar(pickerId);
+  }
+}
+
+function renderCalendar(pickerId) {
+  const picker = document.getElementById(pickerId);
+  const popup = picker.querySelector('.date-picker-popup');
+  const state = pickerStates[pickerId];
+  if (!state) return;
+
+  const { viewYear, viewMonth, date } = state;
+  const monthNames = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+  const dayNames = ['一','二','三','四','五','六','日'];
+
+  // First day of month, last day of month
+  const firstDay = new Date(viewYear, viewMonth, 1);
+  const lastDay = new Date(viewYear, viewMonth + 1, 0);
+  const startDow = firstDay.getDay(); // 0=Sun
+  const adjustedDow = startDow === 0 ? 6 : startDow - 1; // Mon=0
+
+  const today = new Date();
+  const todayStr = `${today.getFullYear()}-${today.getMonth()}-${today.getDate()}`;
+  const selStr = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+
+  let daysHtml = '';
+  // Previous month filler
+  const prevLast = new Date(viewYear, viewMonth, 0).getDate();
+  for (let i = adjustedDow - 1; i >= 0; i--) {
+    daysHtml += `<button class="date-picker-day other-month">${prevLast - i}</button>`;
+  }
+  // Current month
+  for (let d = 1; d <= lastDay.getDate(); d++) {
+    const dStr = `${viewYear}-${viewMonth}-${d}`;
+    let cls = 'date-picker-day';
+    if (dStr === selStr) cls += ' selected';
+    if (dStr === todayStr) cls += ' today';
+    daysHtml += `<button class="${cls}" onclick="pickDate('${pickerId}',${viewYear},${viewMonth},${d},event)">${d}</button>`;
+  }
+  // Next month filler
+  const remaining = (7 - ((adjustedDow + lastDay.getDate()) % 7)) % 7;
+  for (let i = 1; i <= remaining; i++) {
+    daysHtml += `<button class="date-picker-day other-month">${i}</button>`;
+  }
+
+  const h = String(date.getHours()).padStart(2,'0');
+  const m = String(date.getMinutes()).padStart(2,'0');
+
+  popup.innerHTML = `
+    <div class="date-picker-header">
+      <button class="date-picker-nav" onclick="navMonth('${pickerId}',-1,event)">◂</button>
+      <span class="date-picker-month">${viewYear}年 ${monthNames[viewMonth]}</span>
+      <button class="date-picker-nav" onclick="navMonth('${pickerId}',1,event)">▸</button>
+    </div>
+    <div class="date-picker-weekdays">
+      ${dayNames.map(d => `<span>${d}</span>`).join('')}
+    </div>
+    <div class="date-picker-days">${daysHtml}</div>
+    <div class="date-picker-time">
+      <input class="time-inline" value="${h}" maxlength="2" onchange="updateTime('${pickerId}','h',this.value)">
+      <span class="time-sep">:</span>
+      <input class="time-inline" value="${m}" maxlength="2" onchange="updateTime('${pickerId}','m',this.value)">
+    </div>
+  `;
+}
+
+function navMonth(pickerId, delta, e) {
+  e.stopPropagation();
+  const state = pickerStates[pickerId];
+  state.viewMonth += delta;
+  if (state.viewMonth < 0) { state.viewMonth = 11; state.viewYear--; }
+  if (state.viewMonth > 11) { state.viewMonth = 0; state.viewYear++; }
+  renderCalendar(pickerId);
+}
+
+function pickDate(pickerId, year, month, day, e) {
+  e.stopPropagation();
+  const state = pickerStates[pickerId];
+  state.date.setFullYear(year, month, day);
+  state.viewYear = year;
+  state.viewMonth = month;
+  updateTrigger(pickerId);
+  renderCalendar(pickerId);
+}
+
+function updateTime(pickerId, unit, val) {
+  const state = pickerStates[pickerId];
+  const n = parseInt(val) || 0;
+  if (unit === 'h') state.date.setHours(Math.min(23, Math.max(0, n)));
+  else state.date.setMinutes(Math.min(59, Math.max(0, n)));
+  updateTrigger(pickerId);
+}
+
+function updateTrigger(pickerId) {
+  const picker = document.getElementById(pickerId);
+  const trigger = picker.querySelector('.date-picker-trigger');
+  const d = pickerStates[pickerId].date;
+  trigger.textContent = `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
+
+// ── Close all popups ──
+function closeAllPopups() {
+  document.querySelectorAll('.custom-select.open').forEach(s => s.classList.remove('open'));
+  document.querySelectorAll('.date-picker.open').forEach(p => p.classList.remove('open'));
+  document.getElementById('popupOverlay').classList.remove('active');
+}
+
+// ── Init Date Pickers ──
+initDatePicker('startPicker', new Date(2026, 6, 10, 14, 0));
+initDatePicker('endPicker', new Date(2026, 6, 12, 18, 0));
+
+// ── Dot Rating ──
+const dotColorScale = ['#5ea86a','#9db040','#e5a83e','#f57c00','#e5484d'];
+
+function applyDotColors(ratingEl) {
+  const val = parseInt(ratingEl.getAttribute('data-rating'));
+  const c = dotColorScale[val - 1] || dotColorScale[0];
+  ratingEl.querySelectorAll('.dot-btn').forEach((b, i) => {
+    if (i < val) {
+      b.style.background = c;
+      b.style.borderColor = c;
+    } else {
+      b.style.background = 'transparent';
+      b.style.borderColor = '';
+    }
+  });
+}
+
+document.querySelectorAll('.dot-rating').forEach(rating => {
+  applyDotColors(rating);
+  rating.querySelectorAll('.dot-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const val = parseInt(this.dataset.val);
+      const parent = this.parentElement;
+      parent.setAttribute('data-rating', val);
+      parent.querySelectorAll('.dot-btn').forEach((b, i) => {
+        b.classList.toggle('filled', i < val);
+      });
+      applyDotColors(parent);
+    });
+  });
+});
+
+// ── Switch ──
+document.querySelectorAll('.detail-toggle').forEach(toggle => {
+  toggle.addEventListener('click', function(e) {
+    const sw = this.querySelector('.switch');
+    if (sw) sw.classList.toggle('on');
+  });
+});
+
+// Init grid
+renderGrid();
+</script>
+</body>
+</html>

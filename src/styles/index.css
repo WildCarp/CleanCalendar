@@ -1,0 +1,155 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* ── Light Mode (默认) ── */
+  --bg-canvas: #fafaf9;
+  --bg-panel: #f5f4f3;
+  --bg-surface: #ffffff;
+  --bg-surface-hover: #f0efee;
+  --bg-grid-today: rgba(0, 0, 0, 0.03);
+  --bg-grid-header: #f3f2f0;
+  --bg-task-completed: rgba(0, 0, 0, 0.04);
+
+  --text-primary: #1a1a1c;
+  --text-secondary: #585a60;
+  --text-tertiary: #8e9098;
+  --text-disabled: #b8bac2;
+
+  --accent: #6b6e75;
+  --accent-hover: #55585e;
+  --accent-subtle: rgba(107, 110, 117, 0.08);
+
+  --switch-on: #27a644;
+  --status-success: #27a644;
+  --status-warning: #e5a83e;
+  --status-error: #e5484d;
+
+  --btn-ghost-bg: rgba(0, 0, 0, 0.06);
+
+  --border-subtle: rgba(0, 0, 0, 0.05);
+  --border-default: rgba(0, 0, 0, 0.08);
+  --border-strong: rgba(0, 0, 0, 0.12);
+  --border-accent: rgba(107, 110, 117, 0.20);
+
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+  --radius-full: 9999px;
+
+  --grid-hour-height: 48px;
+}
+
+.dark {
+  /* ── Dark Mode ── */
+  --bg-canvas: #0d0d0e;
+  --bg-panel: #121213;
+  --bg-surface: #1a1a1c;
+  --bg-surface-hover: #222225;
+  --bg-grid-today: rgba(255, 255, 255, 0.03);
+  --bg-grid-header: #0f0f11;
+  --bg-task-completed: rgba(128, 128, 128, 0.08);
+
+  --text-primary: #f0f0f2;
+  --text-secondary: #c8ccd4;
+  --text-tertiary: #828690;
+  --text-disabled: #5a5d65;
+
+  --accent-hover: #81848a;
+  --accent-subtle: rgba(107, 110, 117, 0.10);
+
+  --btn-ghost-bg: rgba(255, 255, 255, 0.06);
+
+  --border-subtle: rgba(255, 255, 255, 0.04);
+  --border-default: rgba(255, 255, 255, 0.06);
+  --border-strong: rgba(255, 255, 255, 0.10);
+  --border-accent: rgba(107, 110, 117, 0.25);
+
+  /* accent, success, warning, error 在暗色模式下不变 */
+  --accent: #6b6e75;
+  --switch-on: #27a644;
+  --status-success: #27a644;
+  --status-warning: #e5a83e;
+  --status-error: #e5484d;
+}
+
+/* ── Global Styles ── */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-feature-settings: 'cv01', 'ss03';
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.5;
+  color: var(--text-primary);
+  background: var(--bg-canvas);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-default);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--border-strong);
+}
+
+/* ── Utility Classes ── */
+.font-tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Toast Animation ── */
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes toast-out {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+}
+
+.toast-enter {
+  animation: toast-in 300ms ease-out forwards;
+}
+
+.toast-exit {
+  animation: toast-out 300ms ease-in forwards;
+}
