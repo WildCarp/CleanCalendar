@@ -1,5 +1,5 @@
 import React, { useMemo, useCallback, useState, useRef, useEffect } from 'react';
-import { DndContext, DragOverlay, type DragEndEvent, type DragStartEvent } from '@dnd-kit/core';
+import { DndContext, DragOverlay, PointerSensor, useSensor, useSensors, type DragEndEvent, type DragStartEvent } from '@dnd-kit/core';
 import { TaskBlock } from './TaskBlock';
 import { DroppableCell } from './DroppableCell';
 import { useCalendarStore } from '../../stores/useCalendarStore';
@@ -35,6 +35,11 @@ export const ScheduleGrid: React.FC = () => {
   const viewCenterDate = useCalendarStore(s => s.viewCenterDate);
 
   const [zoomLevel, setZoomLevel] = useState(1.0);
+
+  // ── 传感器：移动 ≥ 6px 才算拖拽，否则 click 正常触发 ──
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+  );
 
   const dayStartHour = settings.dayStartHour || 0;
   const dayEndHour = 24;
@@ -119,18 +124,7 @@ export const ScheduleGrid: React.FC = () => {
     return result;
   }, [tasks, dates]);
 
-  // 任务块位置：left/width + height
-  const getTaskStyle = (startMinutes: number, endMinutes: number): React.CSSProperties => {
-    const left = (startMinutes - dayStartHour * 60) / granularity * slotWidth + 1;
-    const w = (endMinutes - startMinutes) / granularity * slotWidth - 2;
-    return {
-      left: `${left}px`,
-      width: `${Math.max(w, 20)}px`,
-      top: '2px',
-      height: `${Math.max(rowHeight - 4, 16)}px`,
-    };
-  };
-
+  // ── 拖拽状态 ──
   // ===== 拖拽——同步计算 =====
   const handleDragStart = useCallback((event: DragStartEvent) => {
     const data = event.active.data.current;
@@ -232,7 +226,7 @@ export const ScheduleGrid: React.FC = () => {
       onWheel={handleWheel}
       style={{ cursor: panning.current ? 'grabbing' : undefined, willChange: zoomLevel < 0.7 ? 'transform' : 'auto' }}
     >
-      <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+      <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
         {/* 时间表头 */}
         <div className="sticky top-0 z-10 flex bg-cc-grid-header border-b border-cc-border-subtle"
           style={{ height: HEADER_H, minWidth: totalWidth + DATE_LABEL_W }}>
@@ -267,7 +261,7 @@ export const ScheduleGrid: React.FC = () => {
                 backgroundPosition: `${DATE_LABEL_W}px 0`,
                 backgroundRepeat: 'repeat-x',
               }}>
-              {/* 日期标签——sticky 固定在左侧，视觉上在格子外部 */}
+              {/* 日期标签——sticky 固定在左侧 */}
               <div data-date-col
                 className="flex-shrink-0 flex flex-col items-center justify-center border-r border-cc-border-subtle text-label
                   sticky left-0 z-[5]"
@@ -286,29 +280,39 @@ export const ScheduleGrid: React.FC = () => {
                 <span className="text-[10px]">{WEEKDAY_NAMES[d.getDay()]}</span>
               </div>
 
-              {/* 时间槽 */}
-              {Array.from({ length: numSlots }).map((_, i) => (
-                <DroppableCell
-                  key={`${dateStr}-${i}`}
-                  date={dateStr}
-                  slotMinutes={dayStartHour * 60 + i * granularity}
-                  style={{ width: slotWidth }}
-                />
-              ))}
-
-              {/* 本行任务块 */}
-              {segmentedTasks.filter(st => st.date === dateStr).map(st => {
-                const task = tasks.find(t => t.id === st.taskId);
-                if (!task) return null;
-                return (
-                  <TaskBlock
-                    key={`${st.taskId}-${st.segmentIndex}`}
-                    task={task} segmentIndex={st.segmentIndex} segmentId={st.segmentId}
-                    style={{ ...getTaskStyle(st.startMinutes, st.endMinutes), pointerEvents: 'auto' }}
-                    dateStr={st.date} startMinutes={st.startMinutes}
+              {/* 网格区域：overflow-hidden 裁剪溢出到日期栏的任务块 */}
+              <div className="flex-1 relative overflow-hidden" style={{ minWidth: totalWidth }}>
+                {Array.from({ length: numSlots }).map((_, i) => (
+                  <DroppableCell
+                    key={`${dateStr}-${i}`}
+                    date={dateStr}
+                    slotMinutes={dayStartHour * 60 + i * granularity}
+                    style={{ width: slotWidth }}
                   />
-                );
-              })}
+                ))}
+
+                {segmentedTasks.filter(st => st.date === dateStr).map(st => {
+                  const task = tasks.find(t => t.id === st.taskId);
+                  if (!task) return null;
+                  // left 从现在 relative 容器算起（0 = 网格区域起点）
+                  const taskLeft = (st.startMinutes - dayStartHour * 60) / granularity * slotWidth + 1;
+                  const taskW = (st.endMinutes - st.startMinutes) / granularity * slotWidth - 2;
+                  return (
+                    <TaskBlock
+                      key={`${st.taskId}-${st.segmentIndex}`}
+                      task={task} segmentIndex={st.segmentIndex} segmentId={st.segmentId}
+                      style={{
+                        left: `${taskLeft}px`,
+                        width: `${Math.max(taskW, 20)}px`,
+                        top: '2px',
+                        height: `${Math.max(rowHeight - 4, 16)}px`,
+                        pointerEvents: 'auto',
+                      }}
+                      dateStr={st.date} startMinutes={st.startMinutes}
+                    />
+                  );
+                })}
+              </div>
             </div>
           );
         })}
